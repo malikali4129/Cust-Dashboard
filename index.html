@@ -3,150 +3,111 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#f5efe3">
+    <link rel="manifest" href="manifest.webmanifest">
     <title>University Dashboard</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
-<body>
-    <!-- Mobile Menu Toggle -->
-    <button class="mobile-toggle" aria-label="Toggle menu">☰</button>
-    
-    <div class="app-container">
-        <!-- Sidebar -->
+<body class="dashboard-body">
+    <div class="app-shell">
+        <button class="mobile-toggle" aria-label="Open navigation">Menu</button>
         <aside class="sidebar">
-            <div class="sidebar-header">
-                <div class="logo">
-                    <div class="logo-icon">🎓</div>
-                    <span>UniDashboard</span>
-                </div>
+            <div class="sidebar-brand">
+                <p class="eyebrow">Student portal</p>
+                <h1>University Dashboard</h1>
+                <p class="sidebar-copy">A calm, live view of notices, coursework, deadlines, and quiz planning.</p>
             </div>
-            
             <nav class="sidebar-nav">
-                <div class="nav-section">
-                    <div class="nav-section-title">Main</div>
-                    <a href="index.html" class="nav-item active">
-                        <span>📊</span>
-                        <span>Dashboard</span>
-                    </a>
-                    <a href="#announcements" class="nav-item">
-                        <span>📢</span>
-                        <span>Announcements</span>
-                    </a>
-                    <a href="#assignments" class="nav-item">
-                        <span>📝</span>
-                        <span>Assignments</span>
-                    </a>
-                </div>
-                
-                <div class="nav-section">
-                    <div class="nav-section-title">Schedule</div>
-                    <a href="#deadlines" class="nav-item">
-                        <span>⏰</span>
-                        <span>Deadlines</span>
-                    </a>
-                    <a href="#quizzes" class="nav-item">
-                        <span>❓</span>
-                        <span>Quizzes</span>
-                    </a>
-                </div>
-                
-                <div class="nav-section">
-                    <div class="nav-section-title">Manage</div>
-                    <a href="admin.html" class="nav-item">
-                        <span>⚙️</span>
-                        <span>Admin Panel</span>
-                    </a>
-                </div>
+                <a href="#overview" class="nav-item active">Overview</a>
+                <a href="#announcements" class="nav-item">Announcements</a>
+                <a href="#assignments" class="nav-item">Assignments</a>
+                <a href="#deadlines" class="nav-item">Deadlines</a>
+                <a href="#quizzes" class="nav-item">Quizzes</a>
+                <a href="admin.html" class="nav-item">Admin</a>
             </nav>
-            
             <div class="sidebar-footer">
-                <button class="btn btn-secondary" style="width: 100%;" onclick="DashboardUtils.toggleDarkMode()">
-                    <span id="theme-icon">🌙</span>
-                    <span id="theme-text">Dark Mode</span>
+                <button class="btn btn-secondary" type="button" onclick="DashboardUtils.toggleTheme()">
+                    Theme <span data-theme-toggle-label>Dark</span>
                 </button>
             </div>
         </aside>
-        
-        <!-- Main Content -->
+
         <main class="main-content">
-            <!-- Top Bar -->
-            <div class="top-bar">
-                <div class="page-title">
-                    <h1>Student Dashboard</h1>
-                    <p>Stay updated with your class activities</p>
+            <section id="overview" class="hero-panel">
+                <div>
+                    <p class="eyebrow">Live class pulse</p>
+                    <h2>Built for quick decisions on mobile, with a richer overview on the web.</h2>
+                    <p class="hero-copy">Data comes from Supabase only. When the network drops, this shell still opens and clearly shows offline state.</p>
                 </div>
-                <div class="top-bar-actions">
-                    <span id="last-updated" style="color: var(--text-muted); font-size: 0.9rem;"></span>
+                <div class="hero-meta">
+                    <div class="status-pill">
+                        <strong data-connection-state>Online</strong>
+                        <span data-connection-hint>Connected to Supabase</span>
+                    </div>
+                    <div class="status-pill">
+                        <strong data-timezone-label></strong>
+                        <span>Display timezone</span>
+                    </div>
+                    <div class="status-pill">
+                        <strong id="last-updated">Sync pending</strong>
+                        <span>Latest cloud refresh</span>
+                    </div>
                 </div>
-            </div>
-            
-            <!-- Stats Grid -->
-            <div class="stats-grid" id="stats-grid">
-                <!-- Stats injected by JS -->
-            </div>
-            
-            <!-- Content Grid -->
-            <div class="content-grid">
-                <!-- Left Column -->
-                <div class="left-column">
-                    <!-- Announcements Section -->
-                    <section id="announcements" class="card mb-4">
-                        <div class="card-header">
-                            <h2 class="card-title">📢 Latest Announcements</h2>
-                            <a href="admin.html" class="btn btn-sm btn-secondary">Manage</a>
+            </section>
+
+            <section class="stats-grid" id="stats-grid"></section>
+
+            <div class="content-layout">
+                <section id="announcements" class="panel feature-panel">
+                    <div class="panel-header">
+                        <div>
+                            <p class="eyebrow">Broadcasts</p>
+                            <h2>Announcements</h2>
                         </div>
-                        <div id="announcements-list">
-                            <!-- Announcements injected by JS -->
+                        <a href="admin.html" class="btn btn-secondary btn-sm">Manage</a>
+                    </div>
+                    <div id="announcements-list"></div>
+                </section>
+
+                <section id="deadlines" class="panel accent-panel">
+                    <div class="panel-header">
+                        <div>
+                            <p class="eyebrow">Time-sensitive</p>
+                            <h2>Deadlines</h2>
                         </div>
-                    </section>
-                    
-                    <!-- Assignments Section -->
-                    <section id="assignments" class="card mb-4">
-                        <div class="card-header">
-                            <h2 class="card-title">📝 Pending Assignments</h2>
-                            <a href="admin.html" class="btn btn-sm btn-secondary">Manage</a>
+                        <a href="admin.html" class="btn btn-secondary btn-sm">Manage</a>
+                    </div>
+                    <div id="deadlines-list"></div>
+                </section>
+
+                <section id="assignments" class="panel">
+                    <div class="panel-header">
+                        <div>
+                            <p class="eyebrow">Coursework</p>
+                            <h2>Assignments</h2>
                         </div>
-                        <div id="assignments-list">
-                            <!-- Assignments injected by JS -->
+                        <a href="admin.html" class="btn btn-secondary btn-sm">Manage</a>
+                    </div>
+                    <div id="assignments-list"></div>
+                </section>
+
+                <section id="quizzes" class="panel">
+                    <div class="panel-header">
+                        <div>
+                            <p class="eyebrow">Assessment</p>
+                            <h2>Quizzes</h2>
                         </div>
-                    </section>
-                </div>
-                
-                <!-- Right Column -->
-                <div class="right-column">
-                    <!-- Deadlines Section -->
-                    <section id="deadlines" class="card mb-4">
-                        <div class="card-header">
-                            <h2 class="card-title">⏰ Upcoming Deadlines</h2>
-                            <a href="admin.html" class="btn btn-sm btn-secondary">Manage</a>
-                        </div>
-                        <div id="deadlines-list">
-                            <!-- Deadlines injected by JS -->
-                        </div>
-                    </section>
-                    
-                    <!-- Quizzes Section -->
-                    <section id="quizzes" class="card mb-4">
-                        <div class="card-header">
-                            <h2 class="card-title">❓ Upcoming Quizzes</h2>
-                            <a href="admin.html" class="btn btn-sm btn-secondary">Manage</a>
-                        </div>
-                        <div id="quizzes-list">
-                            <!-- Quizzes injected by JS -->
-                        </div>
-                    </section>
-                </div>
+                        <a href="admin.html" class="btn btn-secondary btn-sm">Manage</a>
+                    </div>
+                    <div id="quizzes-list"></div>
+                </section>
             </div>
         </main>
     </div>
-    
-    <!-- Scripts -->
+
     <script src="config.js"></script>
     <script src="data.js"></script>
     <script src="script.js"></script>
     <script src="dashboard.js"></script>
-
 </body>
 </html>

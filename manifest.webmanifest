@@ -1,0 +1,9 @@
+{
+  "name": "University Dashboard",
+  "short_name": "UniDash",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#f5efe3",
+  "theme_color": "#f5efe3",
+  "icons": []
+}

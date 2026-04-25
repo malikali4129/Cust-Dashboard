@@ -1,79 +1,109 @@
--- Supabase Database Schema for University Dashboard
--- Run this in Supabase SQL Editor to create tables
+-- University Dashboard schema
+-- Public read access, authenticated write access.
 
--- Enable UUID extension
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+create extension if not exists "uuid-ossp";
 
--- Announcements table
-CREATE TABLE IF NOT EXISTS announcements (
-    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-    title TEXT NOT NULL,
-    content TEXT NOT NULL,
-    priority TEXT DEFAULT 'normal' CHECK (priority IN ('normal', 'high')),
-    date TIMESTAMPTZ DEFAULT NOW(),
-    created_at TIMESTAMPTZ DEFAULT NOW()
+create table if not exists announcements (
+    id uuid primary key default uuid_generate_v4(),
+    title text not null,
+    content text not null,
+    priority text not null default 'normal' check (priority in ('normal', 'high')),
+    date timestamptz not null default now(),
+    created_at timestamptz not null default now()
 );
 
--- Assignments table
-CREATE TABLE IF NOT EXISTS assignments (
-    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-    title TEXT NOT NULL,
-    subject TEXT,
-    description TEXT NOT NULL,
-    deadline TIMESTAMPTZ NOT NULL,
-    status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'completed')),
-    created_at TIMESTAMPTZ DEFAULT NOW()
+create table if not exists assignments (
+    id uuid primary key default uuid_generate_v4(),
+    title text not null,
+    subject text,
+    description text not null,
+    deadline timestamptz not null,
+    status text not null default 'pending' check (status in ('pending', 'completed')),
+    created_at timestamptz not null default now()
 );
 
--- Deadlines table
-CREATE TABLE IF NOT EXISTS deadlines (
-    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-    title TEXT NOT NULL,
-    category TEXT,
-    date TIMESTAMPTZ NOT NULL,
-    priority TEXT DEFAULT 'medium' CHECK (priority IN ('low', 'medium', 'high')),
-    created_at TIMESTAMPTZ DEFAULT NOW()
+create table if not exists deadlines (
+    id uuid primary key default uuid_generate_v4(),
+    title text not null,
+    category text,
+    date timestamptz not null,
+    priority text not null default 'medium' check (priority in ('low', 'medium', 'high')),
+    created_at timestamptz not null default now()
 );
 
--- Quizzes table
-CREATE TABLE IF NOT EXISTS quizzes (
-    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-    title TEXT NOT NULL,
-    subject TEXT,
-    date TIMESTAMPTZ NOT NULL,
-    duration INTEGER NOT NULL,
-    total_marks INTEGER,
-    created_at TIMESTAMPTZ DEFAULT NOW()
+create table if not exists quizzes (
+    id uuid primary key default uuid_generate_v4(),
+    title text not null,
+    subject text,
+    date timestamptz not null,
+    duration integer not null check (duration > 0),
+    total_marks integer,
+    created_at timestamptz not null default now()
 );
 
--- Settings table (for admin password)
-CREATE TABLE IF NOT EXISTS settings (
-    id INTEGER PRIMARY KEY DEFAULT 1,
-    admin_password TEXT DEFAULT 'cr2024',
-    last_updated TIMESTAMPTZ DEFAULT NOW()
+create table if not exists settings (
+    id integer primary key default 1,
+    dashboard_timezone text not null default 'UTC',
+    last_updated timestamptz not null default now()
 );
 
--- Insert default settings
-INSERT INTO settings (id, admin_password, last_updated)
-VALUES (1, 'cr2024', NOW())
-ON CONFLICT (id) DO NOTHING;
+insert into settings (id, dashboard_timezone, last_updated)
+values (1, 'UTC', now())
+on conflict (id) do nothing;
 
--- Enable Row Level Security (RLS) but allow all access for this use case
-ALTER TABLE announcements ENABLE ROW LEVEL SECURITY;
-ALTER TABLE assignments ENABLE ROW LEVEL SECURITY;
-ALTER TABLE deadlines ENABLE ROW LEVEL SECURITY;
-ALTER TABLE quizzes ENABLE ROW LEVEL SECURITY;
-ALTER TABLE settings ENABLE ROW LEVEL SECURITY;
+alter table announcements enable row level security;
+alter table assignments enable row level security;
+alter table deadlines enable row level security;
+alter table quizzes enable row level security;
+alter table settings enable row level security;
 
--- Create policies for public access (suitable for class dashboard)
-CREATE POLICY "Allow all" ON announcements FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Allow all" ON assignments FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Allow all" ON deadlines FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Allow all" ON quizzes FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Allow all" ON settings FOR ALL USING (true) WITH CHECK (true);
+drop policy if exists "public read announcements" on announcements;
+drop policy if exists "public read assignments" on assignments;
+drop policy if exists "public read deadlines" on deadlines;
+drop policy if exists "public read quizzes" on quizzes;
+drop policy if exists "public read settings" on settings;
+drop policy if exists "authenticated write announcements" on announcements;
+drop policy if exists "authenticated write assignments" on assignments;
+drop policy if exists "authenticated write deadlines" on deadlines;
+drop policy if exists "authenticated write quizzes" on quizzes;
+drop policy if exists "authenticated update settings" on settings;
 
--- Create indexes for better performance
-CREATE INDEX IF NOT EXISTS idx_announcements_date ON announcements(date DESC);
-CREATE INDEX IF NOT EXISTS idx_assignments_deadline ON assignments(deadline ASC);
-CREATE INDEX IF NOT EXISTS idx_deadlines_date ON deadlines(date ASC);
-CREATE INDEX IF NOT EXISTS idx_quizzes_date ON quizzes(date ASC);
+create policy "public read announcements" on announcements
+for select using (true);
+
+create policy "public read assignments" on assignments
+for select using (true);
+
+create policy "public read deadlines" on deadlines
+for select using (true);
+
+create policy "public read quizzes" on quizzes
+for select using (true);
+
+create policy "public read settings" on settings
+for select using (true);
+
+create policy "authenticated write announcements" on announcements
+for all using (auth.role() = 'authenticated')
+with check (auth.role() = 'authenticated');
+
+create policy "authenticated write assignments" on assignments
+for all using (auth.role() = 'authenticated')
+with check (auth.role() = 'authenticated');
+
+create policy "authenticated write deadlines" on deadlines
+for all using (auth.role() = 'authenticated')
+with check (auth.role() = 'authenticated');
+
+create policy "authenticated write quizzes" on quizzes
+for all using (auth.role() = 'authenticated')
+with check (auth.role() = 'authenticated');
+
+create policy "authenticated update settings" on settings
+for all using (auth.role() = 'authenticated')
+with check (auth.role() = 'authenticated');
+
+create index if not exists idx_announcements_date on announcements (date desc);
+create index if not exists idx_assignments_deadline on assignments (deadline asc);
+create index if not exists idx_deadlines_date on deadlines (date asc);
+create index if not exists idx_quizzes_date on quizzes (date asc);

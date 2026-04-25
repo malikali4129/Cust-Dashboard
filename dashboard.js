@@ -1,258 +1,201 @@
 /**
- * University Dashboard - Student View Logic
- * Renders all data dynamically from Supabase cloud database
+ * University Dashboard - Student dashboard
  */
 
-// ==================== RENDER STATS ====================
+const dashboardState = {
+    timeZone: DashboardUtils.TIME_ZONE_LABEL
+};
 
-async function renderStats() {
-    const stats = await DashboardData.getStats();
+function renderStats(stats) {
     const grid = document.getElementById('stats-grid');
-    
-    const statsConfig = [
-        {
-            icon: '📢',
-            color: 'blue',
-            value: stats.totalAnnouncements,
-            label: 'Total Announcements'
-        },
-        {
-            icon: '📝',
-            color: 'orange',
-            value: stats.pendingAssignments,
-            label: 'Pending Assignments'
-        },
-        {
-            icon: '⏰',
-            color: 'red',
-            value: stats.upcomingDeadlines,
-            label: 'Upcoming Deadlines'
-        },
-        {
-            icon: '❓',
-            color: 'green',
-            value: stats.upcomingQuizzes,
-            label: 'Upcoming Quizzes'
-        }
+    if (!grid) {
+        return;
+    }
+
+    const cards = [
+        { value: stats.totalAnnouncements, label: 'Live notices', tone: 'champagne' },
+        { value: stats.pendingAssignments, label: 'Pending work', tone: 'emerald' },
+        { value: stats.upcomingDeadlines, label: 'Deadline watch', tone: 'ruby' },
+        { value: stats.upcomingQuizzes, label: 'Quiz schedule', tone: 'ink' }
     ];
-    
-    grid.innerHTML = statsConfig.map(stat => `
-        <div class="stat-card animate-fade-in">
-            <div class="stat-icon ${stat.color}">
-                ${stat.icon}
-            </div>
-            <div class="stat-info">
-                <h3>${stat.value}</h3>
-                <p>${stat.label}</p>
-            </div>
-        </div>
+
+    grid.innerHTML = cards.map((card) => `
+        <article class="stat-card stat-${card.tone}">
+            <div class="stat-value">${card.value}</div>
+            <div class="stat-label">${card.label}</div>
+        </article>
     `).join('');
 }
 
-// ==================== RENDER ANNOUNCEMENTS ====================
-
-async function renderAnnouncements() {
-    const announcements = await DashboardData.getAnnouncements();
+function renderAnnouncements(items) {
     const container = document.getElementById('announcements-list');
-    
-    if (announcements.length === 0) {
-        container.innerHTML = `
-            <div class="empty-state">
-                <div style="font-size: 3rem; margin-bottom: 16px;">📭</div>
-                <h3>No announcements yet</h3>
-                <p>Check back later for updates from your CR</p>
-            </div>
-        `;
+    if (!container) {
         return;
     }
-    
-    container.innerHTML = announcements.slice(0, 5).map(ann => `
-        <div class="announcement-item ${ann.priority === 'high' ? 'high-priority' : ''} animate-fade-in">
-            <div class="announcement-header">
+
+    if (items.length === 0) {
+        container.innerHTML = emptyState('No announcements yet', 'Fresh updates from your CR will appear here.');
+        return;
+    }
+
+    container.innerHTML = items.map((item) => `
+        <article class="feed-card ${item.priority === 'high' ? 'is-urgent' : ''}">
+            <div class="feed-card-top">
                 <div>
-                    <div class="announcement-title">${escapeHtml(ann.title)}</div>
-                    <span class="priority-badge ${ann.priority || 'normal'}">${ann.priority || 'normal'}</span>
+                    <h3>${DashboardUtils.escapeHtml(item.title)}</h3>
+                    <span class="badge badge-${item.priority || 'normal'}">${DashboardUtils.escapeHtml(item.priority || 'normal')}</span>
                 </div>
-                <span class="announcement-date">${DashboardUtils.getRelativeTime(ann.date)}</span>
+                <time>${DashboardUtils.getRelativeTime(item.date)}</time>
             </div>
-            <div class="announcement-content">${escapeHtml(ann.content)}</div>
-        </div>
+            <p>${DashboardUtils.escapeHtml(item.content)}</p>
+        </article>
     `).join('');
 }
 
-// ==================== RENDER ASSIGNMENTS ====================
-
-async function renderAssignments() {
-    const assignments = await DashboardData.getAssignments();
+function renderAssignments(items) {
     const container = document.getElementById('assignments-list');
-    
-    if (assignments.length === 0) {
-        container.innerHTML = `
-            <div class="empty-state">
-                <div style="font-size: 3rem; margin-bottom: 16px;">📝</div>
-                <h3>No assignments yet</h3>
-                <p>You're all caught up!</p>
-            </div>
-        `;
+    if (!container) {
         return;
     }
-    
-    container.innerHTML = assignments.map(asg => `
-        <div class="assignment-card animate-fade-in">
-            <div class="assignment-header">
+
+    if (items.length === 0) {
+        container.innerHTML = emptyState('No assignments', 'This section updates as soon as new work is published.');
+        return;
+    }
+
+    container.innerHTML = items.map((item) => `
+        <article class="task-card">
+            <div class="task-card-head">
                 <div>
-                    <div class="assignment-title">${escapeHtml(asg.title)}</div>
-                    <div class="assignment-subject">${escapeHtml(asg.subject || 'General')}</div>
+                    <h3>${DashboardUtils.escapeHtml(item.title)}</h3>
+                    <p>${DashboardUtils.escapeHtml(item.subject || 'General')}</p>
                 </div>
-                <span class="status-badge ${asg.status}">${asg.status}</span>
+                <span class="badge badge-${item.status}">${DashboardUtils.escapeHtml(item.status)}</span>
             </div>
-            <div class="assignment-desc">${escapeHtml(asg.description)}</div>
-            <div class="assignment-footer">
-                <div class="deadline-info">
-                    <span>📅</span>
-                    <span>${DashboardUtils.formatDate(asg.deadline)}</span>
-                </div>
-                <span style="font-size: 0.85rem; color: var(--text-muted);">
-                    ${formatDateDetailed(asg.deadline)}
-                </span>
+            <p class="task-description">${DashboardUtils.escapeHtml(item.description)}</p>
+            <div class="task-meta">
+                <span>${DashboardUtils.formatDate(item.deadline, dashboardState.timeZone)}</span>
+                <span>${DashboardUtils.formatLongDate(item.deadline, dashboardState.timeZone)}</span>
             </div>
-        </div>
+        </article>
     `).join('');
 }
 
-// ==================== RENDER DEADLINES ====================
-
-async function renderDeadlines() {
-    const deadlines = await DashboardData.getDeadlines();
+function renderDeadlines(items) {
     const container = document.getElementById('deadlines-list');
-    
-    if (deadlines.length === 0) {
-        container.innerHTML = `
-            <div class="empty-state">
-                <div style="font-size: 3rem; margin-bottom: 16px;">📅</div>
-                <h3>No deadlines</h3>
-                <p>Nothing due at the moment</p>
-            </div>
-        `;
+    if (!container) {
         return;
     }
-    
-    container.innerHTML = deadlines.slice(0, 6).map(dl => {
-        const dateInfo = DashboardUtils.formatDateShort(dl.date);
-        const isOverdue = new Date(dl.date) < new Date();
-        
+
+    if (items.length === 0) {
+        container.innerHTML = emptyState('No deadlines', 'You have breathing room right now.');
+        return;
+    }
+
+    container.innerHTML = items.map((item) => {
+        const dateInfo = DashboardUtils.formatDateShort(item.date, dashboardState.timeZone);
         return `
-            <div class="deadline-item animate-fade-in">
-                <div class="deadline-date">
-                    <div class="day">${dateInfo.day}</div>
-                    <div class="month">${dateInfo.month}</div>
+            <article class="timeline-item">
+                <div class="timeline-date">
+                    <strong>${dateInfo.day}</strong>
+                    <span>${dateInfo.month}</span>
                 </div>
-                <div class="deadline-info" style="flex: 1;">
-                    <h4>${escapeHtml(dl.title)}</h4>
-                    <p>${escapeHtml(dl.category || 'General')} • ${DashboardUtils.formatDate(dl.date)}</p>
+                <div class="timeline-copy">
+                    <h3>${DashboardUtils.escapeHtml(item.title)}</h3>
+                    <p>${DashboardUtils.escapeHtml(item.category || 'General')} . ${DashboardUtils.formatLongDate(item.date, dashboardState.timeZone)}</p>
                 </div>
-                <span class="priority-badge ${dl.priority}">${dl.priority}</span>
-            </div>
+                <span class="badge badge-${item.priority}">${DashboardUtils.escapeHtml(item.priority)}</span>
+            </article>
         `;
     }).join('');
 }
 
-// ==================== RENDER QUIZZES ====================
-
-async function renderQuizzes() {
-    const quizzes = await DashboardData.getQuizzes();
+function renderQuizzes(items) {
     const container = document.getElementById('quizzes-list');
-    
-    if (quizzes.length === 0) {
-        container.innerHTML = `
-            <div class="empty-state">
-                <div style="font-size: 3rem; margin-bottom: 16px;">🎯</div>
-                <h3>No quizzes scheduled</h3>
-                <p>Enjoy the break!</p>
-            </div>
-        `;
+    if (!container) {
         return;
     }
-    
-    container.innerHTML = quizzes.slice(0, 5).map(quiz => `
-        <div class="quiz-card animate-fade-in">
-            <div class="quiz-info">
-                <h4>${escapeHtml(quiz.title)}</h4>
-                <p>${escapeHtml(quiz.subject || 'General')} • ${DashboardUtils.formatDate(quiz.date)}</p>
+
+    if (items.length === 0) {
+        container.innerHTML = emptyState('No quizzes scheduled', 'When a new quiz is posted, it lands here first.');
+        return;
+    }
+
+    container.innerHTML = items.map((item) => `
+        <article class="quiz-card">
+            <div>
+                <h3>${DashboardUtils.escapeHtml(item.title)}</h3>
+                <p>${DashboardUtils.escapeHtml(item.subject || 'General')}</p>
             </div>
-            <div class="quiz-meta">
-                <div style="font-weight: 600; color: var(--primary);">${quiz.totalMarks || '-'} marks</div>
-                <div class="quiz-duration">⏱️ ${quiz.duration} min</div>
+            <div class="quiz-card-side">
+                <strong>${item.totalMarks || '-'} marks</strong>
+                <span>${item.duration} min</span>
+                <small>${DashboardUtils.formatLongDate(item.date, dashboardState.timeZone)}</small>
             </div>
-        </div>
+        </article>
     `).join('');
 }
 
-// ==================== HELPERS ====================
-
-function escapeHtml(text) {
-    if (!text) return '';
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
+function emptyState(title, copy) {
+    return `
+        <div class="empty-state">
+            <h3>${DashboardUtils.escapeHtml(title)}</h3>
+            <p>${DashboardUtils.escapeHtml(copy)}</p>
+        </div>
+    `;
 }
 
-function formatDateDetailed(dateString) {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-        weekday: 'short',
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-    });
-}
-
-async function updateLastUpdated() {
-    const settings = await DashboardData.getSettings();
-    const el = document.getElementById('last-updated');
-    if (el && settings.lastUpdated) {
-        el.textContent = `Last updated: ${DashboardUtils.getRelativeTime(settings.lastUpdated)}`;
+async function renderSection(renderFn, loader, fallbackId) {
+    try {
+        const data = await loader();
+        renderFn(data);
+    } catch (error) {
+        const container = document.getElementById(fallbackId);
+        if (container) {
+            container.innerHTML = emptyState('Could not load this section', 'Refresh when your connection is back.');
+        }
     }
 }
 
-function updateThemeButton() {
-    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-    const icon = document.getElementById('theme-icon');
-    const text = document.getElementById('theme-text');
-    if (icon) icon.textContent = isDark ? '☀️' : '🌙';
-    if (text) text.textContent = isDark ? 'Light Mode' : 'Dark Mode';
-}
+async function updateMeta() {
+    try {
+        const settings = await DashboardData.getSettings();
+        dashboardState.timeZone = settings.timeZone || DashboardUtils.TIME_ZONE_LABEL;
+        DashboardUtils.setActiveTimeZone(dashboardState.timeZone);
 
-// ==================== INITIALIZATION ====================
+        const updated = document.getElementById('last-updated');
+        if (updated) {
+            updated.textContent = settings.lastUpdated
+                ? `Updated ${DashboardUtils.getRelativeTime(settings.lastUpdated)}`
+                : 'Fresh sync pending';
+        }
+    } catch (error) {
+        DashboardUtils.setActiveTimeZone(DashboardUtils.TIME_ZONE_LABEL);
+    }
+}
 
 async function initDashboard() {
-    // Show loading state
     const statsGrid = document.getElementById('stats-grid');
     if (statsGrid) {
-        statsGrid.innerHTML = '<div class="text-center" style="grid-column: 1/-1; padding: 40px; color: var(--text-muted);">Loading...</div>';
+        statsGrid.innerHTML = '<div class="panel-loading">Loading dashboard...</div>';
     }
-    
+
     try {
+        await updateMeta();
+        const stats = await DashboardData.getStats();
+        renderStats(stats);
+
         await Promise.all([
-            renderStats(),
-            renderAnnouncements(),
-            renderAssignments(),
-            renderDeadlines(),
-            renderQuizzes()
+            renderSection(renderAnnouncements, () => DashboardData.getAnnouncements({ limit: 5 }), 'announcements-list'),
+            renderSection(renderAssignments, () => DashboardData.getAssignments({ limit: 4 }), 'assignments-list'),
+            renderSection(renderDeadlines, () => DashboardData.getDeadlines({ limit: 5 }), 'deadlines-list'),
+            renderSection(renderQuizzes, () => DashboardData.getQuizzes({ limit: 4 }), 'quizzes-list')
         ]);
-        await updateLastUpdated();
-        updateThemeButton();
-        
-        // Show connection status
-        if (DashboardData.isSupabaseConfigured && DashboardData.isSupabaseConfigured()) {
-            DashboardUtils.showToast('Connected to cloud database!', 'success');
-        } else {
-            DashboardUtils.showToast('Running in local mode. Configure Supabase for cloud storage.', 'warning');
+    } catch (error) {
+        if (statsGrid) {
+            statsGrid.innerHTML = '<div class="panel-loading error">Could not reach Supabase. The app shell is available offline, but data requires a connection.</div>';
         }
-    } catch (e) {
-        console.error('Error loading dashboard:', e);
-        DashboardUtils.showToast('Error loading data. Please refresh.', 'error');
+        DashboardUtils.showToast('Student data could not be loaded.', 'error');
     }
 }
 
