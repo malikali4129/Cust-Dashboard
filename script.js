@@ -18,9 +18,9 @@ function toggleTheme() {
 }
 
 function updateThemeButton() {
-    const isDark = document.documentElement.hasAttribute('data-theme');
+    const isLight = document.documentElement.hasAttribute('data-theme');
     document.querySelectorAll('[data-theme-toggle-label]').forEach((element) => {
-        element.textContent = isDark ? 'Light' : 'Dark';
+        element.textContent = isLight ? 'Dark' : 'Light';
     });
 }
 
