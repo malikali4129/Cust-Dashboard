@@ -13,9 +13,9 @@
         <button class="mobile-toggle" aria-label="Open navigation">Menu</button>
         <aside class="sidebar">
             <div class="sidebar-brand">
-                <p class="eyebrow">Student portal</p>
+                <p class="eyebrow">Student Portal</p>
                 <h1>University Dashboard</h1>
-                <p class="sidebar-copy">A calm, live view of notices, coursework, deadlines, and quiz planning.</p>
+                <p class="sidebar-copy">Live class updates in one place.</p>
             </div>
             <nav class="sidebar-nav">
                 <a href="#overview" class="nav-item active">Overview</a>
@@ -23,7 +23,6 @@
                 <a href="#assignments" class="nav-item">Assignments</a>
                 <a href="#deadlines" class="nav-item">Deadlines</a>
                 <a href="#quizzes" class="nav-item">Quizzes</a>
-                <a href="admin.html" class="nav-item">Admin</a>
             </nav>
             <div class="sidebar-footer">
                 <button class="btn btn-secondary" type="button" onclick="DashboardUtils.toggleTheme()">
@@ -33,76 +32,67 @@
         </aside>
 
         <main class="main-content">
-            <section id="overview" class="hero-panel">
-                <div>
-                    <p class="eyebrow">Live class pulse</p>
-                    <h2>Built for quick decisions on mobile, with a richer overview on the web.</h2>
-                    <p class="hero-copy">Data comes from Supabase only. When the network drops, this shell still opens and clearly shows offline state.</p>
+            <header class="dashboard-header compact-header">
+                <div class="brand-lockup">
+                    <h2>My Cust</h2>
                 </div>
-                <div class="hero-meta">
-                    <div class="status-pill">
-                        <strong data-connection-state>Online</strong>
-                        <span data-connection-hint>Connected to Supabase</span>
+                <div class="dashboard-header-meta">
+                    <div class="server-chip">
+                        <span class="server-dot" id="server-dot"></span>
+                        <span data-connection-state>Online</span>
                     </div>
-                    <div class="status-pill">
-                        <strong data-timezone-label></strong>
-                        <span>Display timezone</span>
-                    </div>
-                    <div class="status-pill">
+                    <div class="header-meta-item">
+                        <span class="meta-label">Last update</span>
                         <strong id="last-updated">Sync pending</strong>
-                        <span>Latest cloud refresh</span>
                     </div>
                 </div>
-            </section>
+            </header>
 
-            <section class="stats-grid" id="stats-grid"></section>
+            <section class="count-bar" id="stats-grid"></section>
 
-            <div class="content-layout">
-                <section id="announcements" class="panel feature-panel">
-                    <div class="panel-header">
-                        <div>
-                            <p class="eyebrow">Broadcasts</p>
-                            <h2>Announcements</h2>
-                        </div>
-                        <a href="admin.html" class="btn btn-secondary btn-sm">Manage</a>
+            <div class="dashboard-grid">
+                <section id="announcements" class="panel dashboard-section section-wide">
+                    <div class="section-heading">
+                        <h2>Announcements</h2>
                     </div>
                     <div id="announcements-list"></div>
                 </section>
 
-                <section id="deadlines" class="panel accent-panel">
-                    <div class="panel-header">
-                        <div>
-                            <p class="eyebrow">Time-sensitive</p>
-                            <h2>Deadlines</h2>
-                        </div>
-                        <a href="admin.html" class="btn btn-secondary btn-sm">Manage</a>
-                    </div>
-                    <div id="deadlines-list"></div>
-                </section>
-
-                <section id="assignments" class="panel">
-                    <div class="panel-header">
-                        <div>
-                            <p class="eyebrow">Coursework</p>
-                            <h2>Assignments</h2>
-                        </div>
-                        <a href="admin.html" class="btn btn-secondary btn-sm">Manage</a>
+                <section id="assignments" class="panel dashboard-section">
+                    <div class="section-heading">
+                        <p class="eyebrow">Assignments</p>
+                        <h2>Assignments</h2>
                     </div>
                     <div id="assignments-list"></div>
                 </section>
 
-                <section id="quizzes" class="panel">
-                    <div class="panel-header">
-                        <div>
-                            <p class="eyebrow">Assessment</p>
-                            <h2>Quizzes</h2>
-                        </div>
-                        <a href="admin.html" class="btn btn-secondary btn-sm">Manage</a>
+                <section id="deadlines" class="panel dashboard-section">
+                    <div class="section-heading">
+                        <p class="eyebrow">Deadlines</p>
+                        <h2>Deadlines</h2>
+                    </div>
+                    <div id="deadlines-list"></div>
+                </section>
+
+                <section id="quizzes" class="panel dashboard-section">
+                    <div class="section-heading">
+                        <p class="eyebrow">Quizzes</p>
+                        <h2>Quizzes</h2>
                     </div>
                     <div id="quizzes-list"></div>
                 </section>
             </div>
         </main>
+    </div>
+
+    <div id="detail-modal" class="modal-overlay">
+        <div class="modal detail-modal">
+            <div class="modal-header">
+                <h3 id="detail-modal-title">Details</h3>
+                <button class="modal-close" type="button" onclick="DashboardUtils.closeModal('detail-modal')">Close</button>
+            </div>
+            <div id="detail-modal-body" class="modal-body"></div>
+        </div>
     </div>
 
     <script src="config.js"></script>

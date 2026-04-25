@@ -11,9 +11,9 @@
 <body class="admin-body">
     <section id="login-screen" class="login-shell">
         <div class="login-card">
-            <p class="eyebrow">Supabase Auth</p>
+            <p class="eyebrow">Secure Access</p>
             <h1>Admin access</h1>
-            <p class="login-copy">Use your authenticated Supabase admin account. Public visitors can read the dashboard, but only signed-in admins can change it.</p>
+            <p class="login-copy">Sign in to manage the board.</p>
             <form class="editor-form" onsubmit="handleLogin(event)">
                 <label class="field">
                     <span>Email</span>
@@ -28,7 +28,7 @@
             <div class="login-footer">
                 <div class="status-pill compact">
                     <strong data-connection-state>Online</strong>
-                    <span data-connection-hint>Connected to Supabase</span>
+                    <span data-connection-hint>Synced</span>
                 </div>
                 <a href="index.html">Back to dashboard</a>
             </div>
@@ -62,17 +62,17 @@
         <main class="main-content">
             <section class="hero-panel admin-hero">
                 <div>
-                    <p class="eyebrow">Protected writer role</p>
-                    <h2>Optimistic editing, paginated records, and clear offline behavior.</h2>
+                    <p class="eyebrow">Control Room</p>
+                    <h2>Fast edits. Clean glow.</h2>
                 </div>
                 <div class="hero-meta">
                     <div class="status-pill">
                         <strong data-connection-state>Online</strong>
-                        <span data-connection-hint>Connected to Supabase</span>
+                        <span data-connection-hint>Synced</span>
                     </div>
                     <div class="status-pill">
                         <strong data-timezone-label></strong>
-                        <span>Display timezone</span>
+                        <span>Timezone</span>
                     </div>
                     <button class="btn btn-primary" type="button" onclick="openAddModal()">Add record</button>
                 </div>
