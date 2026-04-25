@@ -1,5 +1,6 @@
 /**
  * University Dashboard - Student dashboard
+ * Updated to use cached data functions for offline support
  */
 
 const dashboardState = {
@@ -160,7 +161,7 @@ async function renderSection(renderFn, loader, fallbackId) {
 
 async function updateMeta() {
     try {
-        const settings = await DashboardData.getSettings();
+        const settings = await DashboardDataCached.getSettings();
         dashboardState.timeZone = settings.timeZone || DashboardUtils.TIME_ZONE_LABEL;
         DashboardUtils.setActiveTimeZone(dashboardState.timeZone);
 
@@ -197,7 +198,7 @@ async function openDetailModal(type, id) {
         let item;
 
         if (type === 'announcement') {
-            item = (await DashboardData.getAnnouncements()).find((entry) => entry.id === id);
+            item = (await DashboardDataCached.getAnnouncements()).find((entry) => entry.id === id);
             title.textContent = item.title;
             body.innerHTML = `
                 <div class="detail-stack">
@@ -210,7 +211,7 @@ async function openDetailModal(type, id) {
         }
 
         if (type === 'assignment') {
-            item = (await DashboardData.getAssignments()).find((entry) => entry.id === id);
+            item = (await DashboardDataCached.getAssignments()).find((entry) => entry.id === id);
             title.textContent = item.title;
             body.innerHTML = `
                 <div class="detail-stack">
@@ -224,7 +225,7 @@ async function openDetailModal(type, id) {
         }
 
         if (type === 'deadline') {
-            item = (await DashboardData.getDeadlines()).find((entry) => entry.id === id);
+            item = (await DashboardDataCached.getDeadlines()).find((entry) => entry.id === id);
             title.textContent = item.title;
             body.innerHTML = `
                 <div class="detail-stack">
@@ -236,7 +237,7 @@ async function openDetailModal(type, id) {
             return;
         }
 
-        item = (await DashboardData.getQuizzes()).find((entry) => entry.id === id);
+        item = (await DashboardDataCached.getQuizzes()).find((entry) => entry.id === id);
         title.textContent = item.title;
         body.innerHTML = `
             <div class="detail-stack">
@@ -258,15 +259,15 @@ async function initDashboard() {
 
     try {
         await updateMeta();
-        const stats = await DashboardData.getStats();
+        const stats = await DashboardDataCached.getStats();
         renderStats(stats);
         setServerLiveState(true);
 
         await Promise.all([
-            renderSection(renderAnnouncements, () => DashboardData.getAnnouncements({ limit: 5 }), 'announcements-list'),
-            renderSection(renderAssignments, () => DashboardData.getAssignments({ limit: 4 }), 'assignments-list'),
-            renderSection(renderDeadlines, () => DashboardData.getDeadlines({ limit: 5 }), 'deadlines-list'),
-            renderSection(renderQuizzes, () => DashboardData.getQuizzes({ limit: 4 }), 'quizzes-list')
+            renderSection(renderAnnouncements, () => DashboardDataCached.getAnnouncements({ limit: 5 }), 'announcements-list'),
+            renderSection(renderAssignments, () => DashboardDataCached.getAssignments({ limit: 4 }), 'assignments-list'),
+            renderSection(renderDeadlines, () => DashboardDataCached.getDeadlines({ limit: 5 }), 'deadlines-list'),
+            renderSection(renderQuizzes, () => DashboardDataCached.getQuizzes({ limit: 4 }), 'quizzes-list')
         ]);
     } catch (error) {
         setServerLiveState(false);
@@ -276,6 +277,25 @@ async function initDashboard() {
         DashboardUtils.showToast('Student data could not be loaded.', 'error');
     }
 }
+
+// Listen for data updates to refresh UI
+window.addEventListener('dashboard-data-updated', (event) => {
+    const { dataType } = event.detail;
+    console.log(`Data updated: ${dataType}`);
+    
+    // Refresh relevant sections when data is updated in background
+    if (dataType === 'announcements') {
+        renderSection(renderAnnouncements, () => DashboardDataCached.getAnnouncements({ limit: 5 }), 'announcements-list');
+    } else if (dataType === 'assignments') {
+        renderSection(renderAssignments, () => DashboardDataCached.getAssignments({ limit: 4 }), 'assignments-list');
+    } else if (dataType === 'deadlines') {
+        renderSection(renderDeadlines, () => DashboardDataCached.getDeadlines({ limit: 5 }), 'deadlines-list');
+    } else if (dataType === 'quizzes') {
+        renderSection(renderQuizzes, () => DashboardDataCached.getQuizzes({ limit: 4 }), 'quizzes-list');
+    } else if (dataType === 'stats') {
+        DashboardDataCached.getStats().then(stats => renderStats(stats));
+    }
+});
 
 document.addEventListener('DOMContentLoaded', initDashboard);
 window.openDetailModal = openDetailModal;
