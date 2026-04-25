@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel - University Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Login Screen -->
+    <div id="login-screen" class="login-container">
+        <div class="login-card">
+            <div class="login-header">
+                <div class="logo" style="justify-content: center; margin-bottom: 16px;">
+                    <div class="logo-icon">🔐</div>
+                </div>
+                <h1>Admin Login</h1>
+                <p>Enter password to access the CR panel</p>
+            </div>
+            <form id="login-form" onsubmit="handleLogin(event)">
+                <div class="form-group">
+                    <label class="form-label">Password</label>
+                    <input type="password" id="login-password" class="form-input" placeholder="Enter admin password" required>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%;">Login</button>
+            </form>
+            <p style="text-align: center; margin-top: 16px; font-size: 0.9rem;">
+                <a href="index.html" style="color: var(--primary-light);">← Back to Dashboard</a>
+            </p>
+        </div>
+    </div>
+    
+    <!-- Admin Dashboard -->
+    <div id="admin-dashboard" class="app-container hidden">
+        <!-- Mobile Menu Toggle -->
+        <button class="mobile-toggle" aria-label="Toggle menu">☰</button>
+        
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <div class="logo-icon">⚙️</div>
+                    <span>Admin Panel</span>
+                </div>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <div class="nav-section">
+                    <div class="nav-section-title">Manage Content</div>
+                    <button class="nav-item active" onclick="switchTab('announcements')">
+                        <span>📢</span>
+                        <span>Announcements</span>
+                    </button>
+                    <button class="nav-item" onclick="switchTab('assignments')">
+                        <span>📝</span>
+                        <span>Assignments</span>
+                    </button>
+                    <button class="nav-item" onclick="switchTab('deadlines')">
+                        <span>⏰</span>
+                        <span>Deadlines</span>
+                    </button>
+                    <button class="nav-item" onclick="switchTab('quizzes')">
+                        <span>❓</span>
+                        <span>Quizzes</span>
+                    </button>
+                </div>
+                
+                <div class="nav-section">
+                    <div class="nav-section-title">System</div>
+                    <button class="nav-item" onclick="switchTab('settings')">
+                        <span>🔧</span>
+                        <span>Settings</span>
+                    </button>
+                    <a href="index.html" class="nav-item">
+                        <span>📊</span>
+                        <span>View Dashboard</span>
+                    </a>
+                </div>
+            </nav>
+            
+            <div class="sidebar-footer">
+                <button class="btn btn-secondary" style="width: 100%;" onclick="DashboardUtils.toggleDarkMode()">
+                    <span id="theme-icon">🌙</span>
+                    <span id="theme-text">Dark Mode</span>
+                </button>
+                <button class="btn btn-danger" style="width: 100%; margin-top: 8px;" onclick="handleLogout()">
+                    <span>🚪</span>
+                    <span>Logout</span>
+                </button>
+            </div>
+        </aside>
+        
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="top-bar">
+                <div class="page-title">
+                    <h1>Content Management</h1>
+                    <p>Manage announcements, assignments, deadlines, and quizzes</p>
+                </div>
+                <div class="top-bar-actions">
+                    <button class="btn btn-secondary" onclick="DashboardData.exportData()">
+                        <span>📥</span>
+                        <span>Export</span>
+                    </button>
+                    <label class="btn btn-secondary" style="cursor: pointer;">
+                        <span>📤</span>
+                        <span>Import</span>
+                        <input type="file" accept=".json" style="display: none;" onchange="handleImport(event)">
+                    </label>
+                    <button class="btn btn-primary" onclick="openAddModal()">
+                        <span>➕</span>
+                        <span>Add New</span>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Tabs -->
+            <div class="tabs" id="admin-tabs">
+                <button class="tab active" data-tab="announcements" onclick="switchTab('announcements')">Announcements</button>
+                <button class="tab" data-tab="assignments" onclick="switchTab('assignments')">Assignments</button>
+                <button class="tab" data-tab="deadlines" onclick="switchTab('deadlines')">Deadlines</button>
+                <button class="tab" data-tab="quizzes" onclick="switchTab('quizzes')">Quizzes</button>
+                <button class="tab" data-tab="settings" onclick="switchTab('settings')">Settings</button>
+            </div>
+            
+            <!-- Content Area -->
+            <div id="tab-content">
+                <!-- Dynamic content loaded here -->
+            </div>
+        </main>
+    </div>
+    
+    <!-- Add/Edit Modal -->
+    <div id="item-modal" class="modal-overlay">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title" id="modal-title">Add New Item</h3>
+                <button class="modal-close" onclick="DashboardUtils.closeModal('item-modal')">✕</button>
+            </div>
+            <div class="modal-body" id="modal-body">
+                <!-- Dynamic form -->
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="DashboardUtils.closeModal('item-modal')">Cancel</button>
+                <button class="btn btn-primary" onclick="saveItem()">Save</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Scripts -->
+    <script src="config.js"></script>
+    <script src="data.js"></script>
+    <script src="script.js"></script>
+    <script src="admin.js"></script>
+
+</body>
+</html>

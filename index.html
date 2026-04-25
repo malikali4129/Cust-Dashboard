@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>University Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Mobile Menu Toggle -->
+    <button class="mobile-toggle" aria-label="Toggle menu">☰</button>
+    
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <div class="logo-icon">🎓</div>
+                    <span>UniDashboard</span>
+                </div>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <div class="nav-section">
+                    <div class="nav-section-title">Main</div>
+                    <a href="index.html" class="nav-item active">
+                        <span>📊</span>
+                        <span>Dashboard</span>
+                    </a>
+                    <a href="#announcements" class="nav-item">
+                        <span>📢</span>
+                        <span>Announcements</span>
+                    </a>
+                    <a href="#assignments" class="nav-item">
+                        <span>📝</span>
+                        <span>Assignments</span>
+                    </a>
+                </div>
+                
+                <div class="nav-section">
+                    <div class="nav-section-title">Schedule</div>
+                    <a href="#deadlines" class="nav-item">
+                        <span>⏰</span>
+                        <span>Deadlines</span>
+                    </a>
+                    <a href="#quizzes" class="nav-item">
+                        <span>❓</span>
+                        <span>Quizzes</span>
+                    </a>
+                </div>
+                
+                <div class="nav-section">
+                    <div class="nav-section-title">Manage</div>
+                    <a href="admin.html" class="nav-item">
+                        <span>⚙️</span>
+                        <span>Admin Panel</span>
+                    </a>
+                </div>
+            </nav>
+            
+            <div class="sidebar-footer">
+                <button class="btn btn-secondary" style="width: 100%;" onclick="DashboardUtils.toggleDarkMode()">
+                    <span id="theme-icon">🌙</span>
+                    <span id="theme-text">Dark Mode</span>
+                </button>
+            </div>
+        </aside>
+        
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Top Bar -->
+            <div class="top-bar">
+                <div class="page-title">
+                    <h1>Student Dashboard</h1>
+                    <p>Stay updated with your class activities</p>
+                </div>
+                <div class="top-bar-actions">
+                    <span id="last-updated" style="color: var(--text-muted); font-size: 0.9rem;"></span>
+                </div>
+            </div>
+            
+            <!-- Stats Grid -->
+            <div class="stats-grid" id="stats-grid">
+                <!-- Stats injected by JS -->
+            </div>
+            
+            <!-- Content Grid -->
+            <div class="content-grid">
+                <!-- Left Column -->
+                <div class="left-column">
+                    <!-- Announcements Section -->
+                    <section id="announcements" class="card mb-4">
+                        <div class="card-header">
+                            <h2 class="card-title">📢 Latest Announcements</h2>
+                            <a href="admin.html" class="btn btn-sm btn-secondary">Manage</a>
+                        </div>
+                        <div id="announcements-list">
+                            <!-- Announcements injected by JS -->
+                        </div>
+                    </section>
+                    
+                    <!-- Assignments Section -->
+                    <section id="assignments" class="card mb-4">
+                        <div class="card-header">
+                            <h2 class="card-title">📝 Pending Assignments</h2>
+                            <a href="admin.html" class="btn btn-sm btn-secondary">Manage</a>
+                        </div>
+                        <div id="assignments-list">
+                            <!-- Assignments injected by JS -->
+                        </div>
+                    </section>
+                </div>
+                
+                <!-- Right Column -->
+                <div class="right-column">
+                    <!-- Deadlines Section -->
+                    <section id="deadlines" class="card mb-4">
+                        <div class="card-header">
+                            <h2 class="card-title">⏰ Upcoming Deadlines</h2>
+                            <a href="admin.html" class="btn btn-sm btn-secondary">Manage</a>
+                        </div>
+                        <div id="deadlines-list">
+                            <!-- Deadlines injected by JS -->
+                        </div>
+                    </section>
+                    
+                    <!-- Quizzes Section -->
+                    <section id="quizzes" class="card mb-4">
+                        <div class="card-header">
+                            <h2 class="card-title">❓ Upcoming Quizzes</h2>
+                            <a href="admin.html" class="btn btn-sm btn-secondary">Manage</a>
+                        </div>
+                        <div id="quizzes-list">
+                            <!-- Quizzes injected by JS -->
+                        </div>
+                    </section>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <!-- Scripts -->
+    <script src="config.js"></script>
+    <script src="data.js"></script>
+    <script src="script.js"></script>
+    <script src="dashboard.js"></script>
+
+</body>
+</html>
