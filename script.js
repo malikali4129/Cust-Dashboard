@@ -2,7 +2,7 @@
  * University Dashboard - Shared UI utilities
  */
 
-const TIME_ZONE_LABEL = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+const TIME_ZONE_LABEL = 'Asia/Karachi';
 let activeTimeZone = TIME_ZONE_LABEL;
 
 function setActiveTimeZone(timeZone) {

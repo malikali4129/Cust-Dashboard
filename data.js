@@ -5,7 +5,7 @@
 
 const ADMIN_SESSION_KEY = 'dashboard_admin_session';
 const DEFAULT_PAGE_SIZE = 8;
-const DEFAULT_TIME_ZONE = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+const DEFAULT_TIME_ZONE = 'Asia/Karachi';
 
 function isSupabaseConfigured() {
     return typeof SUPABASE_CONFIG !== 'undefined' &&
@@ -375,14 +375,14 @@ async function getSettings() {
     const rows = await response.json();
     const row = rows[0] || {};
     return {
-        timeZone: row.dashboard_timezone || DEFAULT_TIME_ZONE,
+        timeZone: DEFAULT_TIME_ZONE,
         lastUpdated: row.last_updated || null
     };
 }
 
 async function updateSettings(nextSettings) {
     await touchSettings({
-        dashboard_timezone: nextSettings.timeZone || DEFAULT_TIME_ZONE
+        dashboard_timezone: DEFAULT_TIME_ZONE
     });
 }
 

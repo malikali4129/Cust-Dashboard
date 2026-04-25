@@ -43,12 +43,30 @@ create table if not exists quizzes (
 
 create table if not exists settings (
     id integer primary key default 1,
-    dashboard_timezone text not null default 'UTC',
+    dashboard_timezone text not null default 'Asia/Karachi',
     last_updated timestamptz not null default now()
 );
 
+alter table settings
+    add column if not exists dashboard_timezone text;
+
+alter table settings
+    add column if not exists last_updated timestamptz default now();
+
+update settings
+set dashboard_timezone = 'Asia/Karachi';
+
+alter table settings
+    alter column dashboard_timezone set default 'Asia/Karachi';
+
+alter table settings
+    alter column dashboard_timezone set not null;
+
+alter table settings
+    alter column last_updated set default now();
+
 insert into settings (id, dashboard_timezone, last_updated)
-values (1, 'UTC', now())
+values (1, 'Asia/Karachi', now())
 on conflict (id) do nothing;
 
 alter table announcements enable row level security;

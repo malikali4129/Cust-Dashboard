@@ -9,7 +9,7 @@ Static student/admin dashboard backed only by Supabase.
 - Public users can read dashboard content, but writes are restricted to authenticated users through RLS.
 - Admin tables now use pagination, optimistic updates, import/export against Supabase, and better async failure handling.
 - The shell can open offline through a service worker and shows a clear offline indicator, but cloud data and writes still require a connection.
-- Dates are rendered with an explicit dashboard timezone from the `settings` table.
+- Dates are rendered in Pakistan time (`Asia/Karachi`).
 
 ## Setup
 

@@ -313,7 +313,7 @@ async function handleLogout() {
 
 async function loadSettingsState() {
     const settings = await DashboardData.getSettings();
-    adminState.timeZone = settings.timeZone || DashboardUtils.TIME_ZONE_LABEL;
+    adminState.timeZone = 'Asia/Karachi';
     DashboardUtils.setActiveTimeZone(adminState.timeZone);
 }
 
@@ -424,18 +424,11 @@ function renderSettings(container) {
                 <div class="panel-header">
                     <div>
                         <p class="eyebrow">Calendar clarity</p>
-                        <h2>Dashboard timezone</h2>
+                        <h2>Pakistan time only</h2>
                     </div>
                 </div>
-                <form class="editor-form" onsubmit="saveTimezone(event)">
-                    <label class="field">
-                        <span>Current timezone</span>
-                        <input class="form-input" id="dashboard-timezone" value="${DashboardUtils.escapeHtml(adminState.timeZone)}" required>
-                    </label>
-                    <button class="btn btn-primary" type="submit">Save timezone</button>
-                </form>
                 <div class="settings-note">
-                    All rendered dates use this timezone label. Datetime inputs are converted from the device timezone into UTC before save.
+                    All rendered dates use Asia/Karachi and can no longer be changed from the admin panel.
                 </div>
             </section>
             <section class="panel danger-panel">
@@ -590,20 +583,6 @@ async function changePassword(event) {
         event.target.reset();
     } catch (error) {
         DashboardUtils.showToast(error.message || 'Could not update password.', 'error');
-    }
-}
-
-async function saveTimezone(event) {
-    event.preventDefault();
-    const nextTimeZone = document.getElementById('dashboard-timezone').value.trim();
-
-    try {
-        await DashboardData.updateSettings({ timeZone: nextTimeZone });
-        adminState.timeZone = nextTimeZone;
-        DashboardUtils.setActiveTimeZone(nextTimeZone);
-        DashboardUtils.showToast('Timezone updated.', 'success');
-    } catch (error) {
-        DashboardUtils.showToast('Could not update timezone.', 'error');
     }
 }
 
