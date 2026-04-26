@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'v6';
+const CACHE_VERSION = 'v7';
 const SHELL_CACHE = `dashboard-shell-${CACHE_VERSION}`;
 const FONT_CACHE = `dashboard-fonts-${CACHE_VERSION}`;
 
@@ -86,7 +86,18 @@ function staleWhileRevalidate(request, cacheName) {
             return cached;
         }
 
-        // Otherwise wait for the network response (never return a rejected promise)
-        return fetchPromise;
+        // Wait for the network response
+        const networkResponse = await fetchPromise;
+
+        // Online — return the network response
+        if (networkResponse) {
+            return networkResponse;
+        }
+
+        // Offline + no cache — return a minimal offline fallback
+        return new Response(
+            '<html><body style="font-family:sans-serif;padding:2rem;text-align:center;color:#666"><h2>You are offline</h2><p>Please connect to the internet to load this page.</p></body></html>',
+            { headers: { 'Content-Type': 'text/html; charset=utf-8' } }
+        );
     });
 }

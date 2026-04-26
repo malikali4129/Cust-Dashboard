@@ -338,7 +338,8 @@ svg {
   align-items: center;
   justify-content: space-between;
   padding: 0 var(--space-4) 0 3.75rem;
-  z-index: 40;
+  padding-top: env(safe-area-inset-top);
+  z-index: 100;
   transition: background var(--transition-base);
 }
 
@@ -1689,7 +1690,7 @@ svg {
     padding-right: var(--space-3) !important;
     padding-bottom: var(--space-10) !important;
     /* Safe area for notched phones */
-    padding-top: calc(var(--header-height) + var(--space-4)) !important;
+    padding-top: calc(var(--header-height) + env(safe-area-inset-top) + var(--space-4)) !important;
   }
 
   /* Hero panel — stacks vertically */
@@ -1858,7 +1859,7 @@ svg {
   .header-meta-item { padding: var(--space-1) var(--space-2); font-size: 0.75rem; }
 
   /* Admin header */
-  .admin-header { padding: 0 var(--space-4); gap: var(--space-3); }
+  .admin-header { padding: 0 var(--space-4); gap: var(--space-3); padding-top: env(safe-area-inset-top); height: calc(var(--header-height) + env(safe-area-inset-top)); }
   .admin-header-left { width: auto; flex: 1; }
   .admin-header-left h1 { font-size: 1.125rem; }
   .admin-header-actions { width: auto; justify-content: flex-end; gap: var(--space-2); }
@@ -2015,6 +2016,7 @@ svg {
   justify-content: space-between;
   gap: var(--space-4);
   padding: 0 var(--space-5);
+  padding-top: env(safe-area-inset-top);
   background: var(--bg-elevated);
   border-bottom: 1px solid var(--border);
   position: fixed;
@@ -2022,7 +2024,8 @@ svg {
   left: 0;
   right: 0;
   height: var(--header-height);
-  z-index: 50;
+  height: calc(var(--header-height) + env(safe-area-inset-top));
+  z-index: 100;
   backdrop-filter: blur(12px) saturate(180%);
   -webkit-backdrop-filter: blur(12px) saturate(180%);
   flex-wrap: nowrap;
