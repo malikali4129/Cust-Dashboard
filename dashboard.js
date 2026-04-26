@@ -445,6 +445,8 @@ function applyDashboardUpdate() {
 window.applyDashboardUpdate = applyDashboardUpdate;
 
 // ─── Offline detection ──────────────────────────────────────────────────────
+let isReloading = false;
+
 function initOfflineDetection() {
     const banner = document.getElementById('offline-banner');
 
@@ -455,11 +457,16 @@ function initOfflineDetection() {
     };
 
     const goOnline = () => {
+        if (isReloading) return;
         if (banner) {
             banner.classList.remove('is-visible');
         }
-        // Restart polling now that connection is back
-        startUpdatePolling();
+        // Show "Back online" toast and reload to refresh data
+        DashboardUtils.showToast('Back online — restarting to refresh data...', 'success');
+        isReloading = true;
+        setTimeout(() => {
+            window.location.reload();
+        }, 1500);
     };
 
     if (!navigator.onLine) {

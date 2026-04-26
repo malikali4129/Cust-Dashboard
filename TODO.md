@@ -7,3 +7,6 @@
 - [x] 5. dashboard.js — Add feedback form logic + star interactivity
 - [x] 6. admin.html — Add Feedback tab + detail modal
 - [x] 7. admin.js — Add feedback tab rendering + view/delete logic
+
+
+make logs for any task of admis

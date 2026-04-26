@@ -196,24 +196,33 @@ async function pagedRead(table, { page = 1, pageSize = DEFAULT_PAGE_SIZE, order,
         encodeSearch(fields, search)
     ]);
 
-    const response = await request(`/rest/v1/${table}?${query}`, {
-        headers: buildHeaders({
-            count: true,
-            extra: rangeHeaders(page, pageSize)
-        })
-    });
+    try {
+        const response = await request(`/rest/v1/${table}?${query}`, {
+            headers: buildHeaders({
+                count: true,
+                extra: rangeHeaders(page, pageSize)
+            })
+        });
 
-    if (!response.ok) {
-        throw new Error(`Could not load ${table} (${response.status}).`);
+        if (!response.ok) {
+            throw new Error(`Could not load ${table} (${response.status}).`);
+        }
+
+        const items = await response.json();
+        return {
+            items: items.map(normalize),
+            total: parseCount(response),
+            page,
+            pageSize
+        };
+    } catch (err) {
+        // If offline and no cache, return empty result instead of throwing
+        if (!navigator.onLine) {
+            console.warn(`[pagedRead] Offline - returning empty ${table}`);
+            return { items: [], total: 0, page, pageSize };
+        }
+        throw err;
     }
-
-    const items = await response.json();
-    return {
-        items: items.map(normalize),
-        total: parseCount(response),
-        page,
-        pageSize
-    };
 }
 
 async function listRead(table, { limit, order, normalize = (item) => item } = {}) {
@@ -223,16 +232,25 @@ async function listRead(table, { limit, order, normalize = (item) => item } = {}
         limit ? `limit=${limit}` : ''
     ]);
 
-    const response = await request(`/rest/v1/${table}?${query}`, {
-        headers: buildHeaders()
-    });
+    try {
+        const response = await request(`/rest/v1/${table}?${query}`, {
+            headers: buildHeaders()
+        });
 
-    if (!response.ok) {
-        throw new Error(`Could not load ${table} (${response.status}).`);
+        if (!response.ok) {
+            throw new Error(`Could not load ${table} (${response.status}).`);
+        }
+
+        const items = await response.json();
+        return items.map(normalize);
+    } catch (err) {
+        // If offline and no cache, return empty array instead of throwing
+        if (!navigator.onLine) {
+            console.warn(`[listRead] Offline - returning empty ${table}`);
+            return [];
+        }
+        throw err;
     }
-
-    const items = await response.json();
-    return items.map(normalize);
 }
 
 async function countRead(table, filters = []) {
@@ -369,20 +387,32 @@ async function updatePassword(currentPassword, nextPassword) {
 }
 
 async function getSettings() {
-    const response = await request('/rest/v1/settings?select=*&id=eq.1&limit=1', {
-        headers: buildHeaders()
-    });
+    try {
+        const response = await request('/rest/v1/settings?select=*&id=eq.1&limit=1', {
+            headers: buildHeaders()
+        });
 
-    if (!response.ok) {
-        throw new Error(`Could not load settings (${response.status}).`);
+        if (!response.ok) {
+            throw new Error(`Could not load settings (${response.status}).`);
+        }
+
+        const rows = await response.json();
+        const row = rows[0] || {};
+        return {
+            timeZone: DEFAULT_TIME_ZONE,
+            lastUpdated: row.last_updated || null
+        };
+    } catch (err) {
+        // If offline and no cache, return default settings instead of throwing
+        if (!navigator.onLine) {
+            console.warn('[getSettings] Offline - returning defaults');
+            return {
+                timeZone: DEFAULT_TIME_ZONE,
+                lastUpdated: null
+            };
+        }
+        throw err;
     }
-
-    const rows = await response.json();
-    const row = rows[0] || {};
-    return {
-        timeZone: DEFAULT_TIME_ZONE,
-        lastUpdated: row.last_updated || null
-    };
 }
 
 async function updateSettings(nextSettings) {
