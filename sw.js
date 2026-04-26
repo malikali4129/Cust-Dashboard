@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'v5';
+const CACHE_VERSION = 'v6';
 const SHELL_CACHE = `dashboard-shell-${CACHE_VERSION}`;
 const FONT_CACHE = `dashboard-fonts-${CACHE_VERSION}`;
 
@@ -67,16 +67,26 @@ function staleWhileRevalidate(request, cacheName) {
     return caches.open(cacheName).then(async (cache) => {
         const cached = await cache.match(request);
 
+        // Never serve a redirect from cache — Safari blocks redirect responses
+        const cachedIsRedirect = cached && cached.redirected;
+        if (cachedIsRedirect) {
+            await cache.delete(request);
+        }
+
         const fetchPromise = fetch(request).then((response) => {
-            if (response.ok) {
+            // Only cache fresh, non-redirect, OK responses
+            if (response.ok && !response.redirected) {
                 cache.put(request, response.clone());
             }
             return response;
-        }).catch(() => {
-            // Network failed — cached response (if any) will be returned below
-        });
+        }).catch(() => null);
 
-        // Return cached immediately; network update happens in background
-        return cached || fetchPromise;
+        // If cache has a valid (non-redirect) response, return it immediately
+        if (cached && !cachedIsRedirect) {
+            return cached;
+        }
+
+        // Otherwise wait for the network response (never return a rejected promise)
+        return fetchPromise;
     });
 }
