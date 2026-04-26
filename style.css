@@ -787,13 +787,14 @@ svg {
 .tabs {
   display: flex;
   gap: var(--space-1);
-  overflow-x: auto;
+  flex-wrap: wrap;
   padding: var(--space-1);
   margin-bottom: var(--space-4);
   background: var(--bg-surface);
   border-radius: var(--radius-lg);
   border: 1px solid var(--border);
 }
+
 
 .tab {
   padding: var(--space-2) var(--space-4);
@@ -1466,6 +1467,52 @@ svg {
     max-width: 200px;
   }
 
+  /* Remove table horizontal scroll on mobile */
+  .table-shell {
+    overflow-x: visible;
+    border: none;
+  }
+
+  .data-table {
+    display: block;
+  }
+
+  .data-table thead {
+    display: none;
+  }
+
+  .data-table tbody,
+  .data-table tr,
+  .data-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .data-table tr {
+    margin-bottom: var(--space-3);
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: var(--space-4);
+  }
+
+  .data-table td {
+    border: none;
+    padding: var(--space-2) 0;
+    max-width: none;
+  }
+
+  .data-table td::before {
+    content: attr(data-label);
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-secondary);
+    margin-bottom: var(--space-1);
+  }
+
   /* Modal fits screen */
   .modal-overlay {
     padding: var(--space-2);
@@ -1552,9 +1599,10 @@ svg {
     font-size: 1rem;
   }
 
-  /* Count bar single column on very small screens */
+  /* Count bar 2x2 grid on mobile */
   .count-bar {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--space-3);
   }
 
   /* Count card padding */
@@ -1646,6 +1694,11 @@ svg {
   border-radius: var(--radius-lg);
   margin-bottom: var(--space-4);
   flex-wrap: wrap;
+  position: sticky;
+  top: var(--space-3);
+  z-index: 50;
+  backdrop-filter: blur(12px) saturate(180%);
+  -webkit-backdrop-filter: blur(12px) saturate(180%);
 }
 
 .admin-header-left {
@@ -1655,9 +1708,10 @@ svg {
 }
 
 .admin-header-left h1 {
-  font-size: 1.125rem;
-  font-weight: 700;
+  font-size: 1.25rem;
+  font-weight: 800;
   color: var(--text);
+  letter-spacing: -0.02em;
 }
 
 .connection-dot {
@@ -1743,35 +1797,102 @@ svg {
   display: block;
 }
 
+/* ---------- Icon Buttons ---------- */
+.icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  flex-shrink: 0;
+}
+
+.icon-btn:hover {
+  background: var(--bg-surface-hover);
+  border-color: var(--border-hover);
+  color: var(--text);
+  transform: translateY(-1px);
+}
+
+.icon-btn svg {
+  width: 18px;
+  height: 18px;
+  display: block;
+}
+
+.icon-btn-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: white;
+}
+
+.icon-btn-primary:hover {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.35);
+}
+
+.icon-btn-danger {
+  background: var(--danger-soft);
+  border-color: rgba(239, 68, 68, 0.2);
+  color: #fca5a5;
+}
+
+.icon-btn-danger:hover {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: white;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+}
+
 /* Mobile admin header */
 @media (max-width: 640px) {
   .admin-header {
     padding: var(--space-3) var(--space-4);
     gap: var(--space-3);
+    top: 0;
+    border-radius: 0;
+    margin-bottom: var(--space-3);
+    margin-left: calc(-1 * var(--space-3));
+    margin-right: calc(-1 * var(--space-3));
+    width: calc(100% + var(--space-6));
   }
 
   .admin-header-left {
-    width: 100%;
+    width: auto;
+    flex: 1;
   }
 
   .admin-header-left h1 {
-    font-size: 1rem;
+    font-size: 1.125rem;
   }
 
   .admin-header-actions {
-    width: 100%;
-    justify-content: flex-start;
+    width: auto;
+    justify-content: flex-end;
+    gap: var(--space-2);
   }
 
-  .admin-header-actions .btn {
-    flex: 1;
-    justify-content: center;
-    min-width: 70px;
+  .icon-btn {
+    width: 36px;
+    height: 36px;
+  }
+
+  .icon-btn svg {
+    width: 16px;
+    height: 16px;
   }
 
   .theme-toggle-btn {
-    width: 32px;
-    height: 32px;
+    width: 36px;
+    height: 36px;
   }
 
   .theme-toggle-btn svg {

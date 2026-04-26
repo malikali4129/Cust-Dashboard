@@ -53,15 +53,22 @@
                     <span class="connection-dot" id="admin-connection-dot" title="Connection status"></span>
                 </div>
                 <div class="admin-header-actions">
-                    <button class="theme-toggle-btn" type="button" onclick="DashboardUtils.toggleTheme()" title="Toggle theme">
+                    <a class="icon-btn" href="index.html" title="Student view">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+                    </a>
+                    <button class="icon-btn" type="button" onclick="DashboardUtils.toggleTheme()" title="Toggle theme">
                         <svg class="theme-icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
                         <svg class="theme-icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
                     </button>
-                    <a class="btn btn-secondary btn-sm" href="index.html">Student view</a>
-                    <button class="btn btn-danger btn-sm" type="button" onclick="handleLogout()">Log out</button>
-                    <button class="btn btn-primary btn-sm" type="button" onclick="openAddModal()">Add</button>
+                    <button class="icon-btn icon-btn-primary" type="button" onclick="openAddModal()" title="Add record">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                    </button>
+                    <button class="icon-btn icon-btn-danger" type="button" onclick="handleLogout()" title="Log out">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+                    </button>
                 </div>
             </header>
+
 
             <div class="tabs">
                 <button class="tab active" data-tab="announcements" onclick="switchTab('announcements')">Announcements</button>
