@@ -22,6 +22,9 @@ function updateThemeButton() {
     document.querySelectorAll('[data-theme-toggle-label]').forEach((element) => {
         element.textContent = isLight ? 'Dark' : 'Light';
     });
+    document.querySelectorAll('.theme-toggle-btn').forEach((btn) => {
+        btn.classList.toggle('is-light', isLight);
+    });
 }
 
 function ensureToastContainer() {
@@ -319,6 +322,11 @@ function updateConnectivityUI() {
     document.querySelectorAll('[data-connection-hint]').forEach((element) => {
         element.textContent = online ? 'Connected to Supabase' : 'Viewing cached shell only';
     });
+    const adminDot = document.getElementById('admin-connection-dot');
+    if (adminDot) {
+        adminDot.classList.toggle('is-online', online);
+        adminDot.classList.toggle('is-offline', !online);
+    }
 }
 
 function initConnectivity() {
