@@ -250,7 +250,102 @@ async function openDetailModal(type, id) {
     }
 }
 
+function openFeedbackModal() {
+    const form = document.getElementById('feedback-form');
+    if (form) {
+        form.reset();
+    }
+    const ratingInput = document.getElementById('feedback-rating');
+    if (ratingInput) {
+        ratingInput.value = '';
+    }
+    updateStarDisplay(0);
+    DashboardUtils.openModal('feedback-modal');
+}
+
+function updateStarDisplay(rating) {
+    const stars = document.querySelectorAll('#feedback-stars .star');
+    stars.forEach((star) => {
+        const value = Number(star.dataset.value);
+        star.classList.toggle('is-filled', value <= rating);
+    });
+}
+
+function initStarRating() {
+    const container = document.getElementById('feedback-stars');
+    const ratingInput = document.getElementById('feedback-rating');
+    if (!container || !ratingInput) {
+        return;
+    }
+
+    const stars = container.querySelectorAll('.star');
+    stars.forEach((star) => {
+        star.addEventListener('click', () => {
+            const value = Number(star.dataset.value);
+            ratingInput.value = value;
+            updateStarDisplay(value);
+        });
+
+        star.addEventListener('mouseenter', () => {
+            const value = Number(star.dataset.value);
+            updateStarDisplay(value);
+        });
+    });
+
+    container.addEventListener('mouseleave', () => {
+        const currentRating = Number(ratingInput.value) || 0;
+        updateStarDisplay(currentRating);
+    });
+}
+
+async function submitFeedback() {
+    const form = document.getElementById('feedback-form');
+    if (!form) {
+        return;
+    }
+
+    const formData = Object.fromEntries(new FormData(form).entries());
+
+    const nameError = DashboardUtils.validateLength(formData.name, 1, 100);
+    if (nameError) {
+        DashboardUtils.showToast(`Name: ${nameError}`, 'error');
+        return;
+    }
+
+    const suggestionError = DashboardUtils.validateLength(formData.suggestion, 5, 1000);
+    if (suggestionError) {
+        DashboardUtils.showToast(`Suggestion: ${suggestionError}`, 'error');
+        return;
+    }
+
+    const rating = Number(formData.rating);
+    if (!rating || rating < 1 || rating > 5) {
+        DashboardUtils.showToast('Please select a star rating.', 'error');
+        return;
+    }
+
+    if (!navigator.onLine) {
+        DashboardUtils.showToast('You are offline. Feedback requires a connection.', 'warning');
+        return;
+    }
+
+    try {
+        await DashboardData.addFeedback({
+            name: formData.name,
+            suggestion: formData.suggestion,
+            rating
+        });
+        DashboardUtils.showToast('Thank you for your feedback!', 'success');
+        DashboardUtils.closeModal('feedback-modal');
+        form.reset();
+        updateStarDisplay(0);
+    } catch (error) {
+        DashboardUtils.showToast(error.message || 'Could not submit feedback.', 'error');
+    }
+}
+
 async function initDashboard() {
+
     const statsGrid = document.getElementById('stats-grid');
     if (statsGrid) {
         statsGrid.innerHTML = '<div class="panel-loading">Loading dashboard...</div>';
@@ -277,5 +372,10 @@ async function initDashboard() {
     }
 }
 
-document.addEventListener('DOMContentLoaded', initDashboard);
+document.addEventListener('DOMContentLoaded', () => {
+    initDashboard();
+    initStarRating();
+});
 window.openDetailModal = openDetailModal;
+window.openFeedbackModal = openFeedbackModal;
+window.submitFeedback = submitFeedback;

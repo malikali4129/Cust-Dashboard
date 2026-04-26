@@ -247,11 +247,11 @@ async function countRead(table, filters = []) {
     return parseCount(response);
 }
 
-async function createRow(table, payload) {
+async function createRow(table, payload, { auth = true } = {}) {
     const response = await request(`/rest/v1/${table}`, {
         method: 'POST',
         headers: buildHeaders({
-            auth: true,
+            auth,
             extra: { Prefer: 'return=representation' }
         }),
         body: JSON.stringify(payload)
@@ -552,6 +552,38 @@ async function deleteQuiz(id) {
     await touchSettings();
 }
 
+function normalizeFeedback(item) {
+    return {
+        id: item.id,
+        name: item.name,
+        suggestion: item.suggestion,
+        rating: item.rating,
+        createdAt: item.created_at
+    };
+}
+
+async function getFeedbackPage(options = {}) {
+    return pagedRead('feedback', {
+        ...options,
+        order: 'created_at.desc',
+        fields: ['name', 'suggestion'],
+        normalize: normalizeFeedback
+    });
+}
+
+async function addFeedback(feedback) {
+    const rows = await createRow('feedback', {
+        name: feedback.name.trim(),
+        suggestion: feedback.suggestion.trim(),
+        rating: Number(feedback.rating)
+    }, { auth: false });
+    return normalizeFeedback(rows[0]);
+}
+
+async function deleteFeedback(id) {
+    await deleteRow('feedback', id);
+}
+
 async function getStats() {
     const nowIso = new Date().toISOString();
     const [
@@ -700,5 +732,8 @@ window.DashboardData = {
     getStats,
     exportData,
     importData,
-    clearAllContent
+    clearAllContent,
+    getFeedbackPage,
+    addFeedback,
+    deleteFeedback
 };

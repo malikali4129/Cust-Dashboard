@@ -38,7 +38,11 @@
                 <button class="btn btn-secondary" type="button" onclick="DashboardUtils.toggleTheme()">
                     Theme <span data-theme-toggle-label>Dark</span>
                 </button>
+                <button class="feedback-button" type="button" onclick="openFeedbackModal()">
+                    Send feedback
+                </button>
             </div>
+
         </aside>
 
         <main class="main-content">
@@ -102,7 +106,45 @@
                 <button class="modal-close" type="button" onclick="DashboardUtils.closeModal('detail-modal')">Close</button>
             </div>
             <div id="detail-modal-body" class="modal-body"></div>
+        </div>
     </div>
+
+    <div id="feedback-modal" class="modal-overlay">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>Send Feedback</h3>
+                <button class="modal-close" type="button" onclick="DashboardUtils.closeModal('feedback-modal')">Close</button>
+            </div>
+            <div class="modal-body">
+                <form id="feedback-form" class="feedback-form">
+                    <label class="field">
+                        <span>Name</span>
+                        <input class="form-input" name="name" maxlength="100" required>
+                    </label>
+                    <label class="field">
+                        <span>Suggestion</span>
+                        <textarea class="form-textarea" name="suggestion" minlength="5" maxlength="1000" required></textarea>
+                    </label>
+                    <div class="star-rating-input">
+                        <span>Rating</span>
+                        <div class="star-rating" id="feedback-stars">
+                            <span class="star" data-value="1">★</span>
+                            <span class="star" data-value="2">★</span>
+                            <span class="star" data-value="3">★</span>
+                            <span class="star" data-value="4">★</span>
+                            <span class="star" data-value="5">★</span>
+                        </div>
+                        <input type="hidden" name="rating" id="feedback-rating" required>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" type="button" onclick="DashboardUtils.closeModal('feedback-modal')">Cancel</button>
+                <button class="btn btn-primary" type="button" onclick="submitFeedback()">Submit</button>
+            </div>
+        </div>
+    </div>
+
 
     <script src="config.js"></script>
     <script src="data.js"></script>

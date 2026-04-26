@@ -1696,7 +1696,114 @@ svg {
 
 
 
+/* ---------- Feedback ---------- */
+.feedback-button {
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-border);
+  border-radius: var(--radius-md);
+  color: var(--accent);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  transition: all var(--transition-fast);
+  cursor: pointer;
+}
+
+.feedback-button:hover {
+  background: var(--accent);
+  color: white;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.25);
+}
+
+.star-rating {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.star-rating .star {
+  font-size: 1.75rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color var(--transition-fast);
+  line-height: 1;
+  user-select: none;
+}
+
+.star-rating .star.is-filled {
+  color: #fbbf24;
+}
+
+.star-rating.is-readonly .star {
+  cursor: default;
+}
+
+.star-rating-input {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.feedback-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.feedback-meta {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.feedback-meta-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.feedback-meta-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  min-width: 80px;
+}
+
+.feedback-suggestion-text {
+  line-height: 1.7;
+  color: var(--text-secondary);
+  white-space: pre-wrap;
+}
+
+.feedback-table-rating {
+  display: flex;
+  gap: var(--space-1);
+}
+
+.feedback-table-rating .star {
+  font-size: 1rem;
+  color: #fbbf24;
+}
+
+.feedback-table-rating .star.is-empty {
+  color: var(--text-muted);
+}
+
+.feedback-preview {
+  max-width: 240px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-secondary);
+}
+
 /* ---------- Admin Compact Header ---------- */
+
 .admin-header {
   display: flex;
   align-items: center;
