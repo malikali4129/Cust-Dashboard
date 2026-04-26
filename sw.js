@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'v3';
+const CACHE_VERSION = 'v5';
 const SHELL_CACHE = `dashboard-shell-${CACHE_VERSION}`;
 const FONT_CACHE = `dashboard-fonts-${CACHE_VERSION}`;
 
@@ -40,7 +40,7 @@ self.addEventListener('activate', (event) => {
     self.clients.claim();
 });
 
-// ─── Fetch: Stale-While-Revalidate ──────────────────────────────────────────
+// ─── Fetch: handle different request types ──────────────────────────────────
 self.addEventListener('fetch', (event) => {
     if (event.request.method !== 'GET') {
         return;

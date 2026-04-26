@@ -1329,6 +1329,102 @@ svg {
   gap: var(--space-2);
 }
 
+/* ---------- Update Prompt Modal ---------- */
+.update-modal-overlay {
+  position: fixed;
+  inset: 0;
+  display: none;
+  place-items: center;
+  padding: var(--space-4);
+  background: rgba(2, 4, 10, 0.75);
+  backdrop-filter: blur(6px);
+  z-index: 1000;
+}
+
+.update-modal-overlay.active {
+  display: grid;
+}
+
+.update-modal {
+  width: min(92vw, 400px);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+}
+
+.update-modal-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-5) var(--space-5) var(--space-4);
+  border-bottom: 1px solid var(--border);
+}
+
+.update-modal-icon {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--accent-soft);
+  border-radius: var(--radius-md);
+  flex-shrink: 0;
+}
+
+.update-modal-icon svg {
+  width: 20px;
+  height: 20px;
+  color: var(--accent);
+}
+
+.update-modal-header h3 {
+  font-size: 1.0625rem;
+  font-weight: 700;
+}
+
+.update-modal-body {
+  padding: var(--space-4) var(--space-5);
+}
+
+.update-modal-body p {
+  font-size: 0.9375rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+.update-modal-footer {
+  padding: var(--space-4) var(--space-5);
+  border-top: 1px solid var(--border);
+}
+
+.update-modal-footer .btn {
+  width: 100%;
+  justify-content: center;
+}
+
+/* ---------- Offline Banner ---------- */
+.offline-banner {
+  position: fixed;
+  top: var(--header-height);
+  left: 0;
+  right: 0;
+  background: var(--warning-soft);
+  border-bottom: 1px solid rgba(245, 158, 11, 0.3);
+  padding: var(--space-2) var(--space-4);
+  text-align: center;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #fbbf24;
+  z-index: 45;
+  display: none;
+}
+
+.offline-banner.is-visible {
+  display: block;
+}
+
 /* ---------- PWA Install Banner ---------- */
 .pwa-install-banner {
   position: fixed;

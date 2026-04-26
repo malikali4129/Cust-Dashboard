@@ -88,6 +88,11 @@ async function request(path, options = {}, retry = true) {
     ensureSupabaseConfigured();
 
     const response = await fetch(`${SUPABASE_CONFIG.url}${path}`, options);
+    console.debug(`[DashboardData] ${options.method || 'GET'} ${path} → ${response.status}`);
+    if (!response.ok) {
+        const body = await response.text().catch(() => '');
+        console.error(`[DashboardData] HTTP ${response.status} on ${path}:`, body.slice(0, 200));
+    }
     if (response.status === 401 && retry && options.headers?.Authorization?.startsWith('Bearer ')) {
         try {
             await refreshAdminSession();
@@ -199,7 +204,7 @@ async function pagedRead(table, { page = 1, pageSize = DEFAULT_PAGE_SIZE, order,
     });
 
     if (!response.ok) {
-        throw new Error(`Could not load ${table}.`);
+        throw new Error(`Could not load ${table} (${response.status}).`);
     }
 
     const items = await response.json();
@@ -223,7 +228,7 @@ async function listRead(table, { limit, order, normalize = (item) => item } = {}
     });
 
     if (!response.ok) {
-        throw new Error(`Could not load ${table}.`);
+        throw new Error(`Could not load ${table} (${response.status}).`);
     }
 
     const items = await response.json();
@@ -241,7 +246,7 @@ async function countRead(table, filters = []) {
     });
 
     if (!response.ok) {
-        throw new Error(`Could not count ${table}.`);
+        throw new Error(`Could not count ${table} (${response.status}).`);
     }
 
     return parseCount(response);
@@ -258,7 +263,7 @@ async function createRow(table, payload, { auth = true } = {}) {
     });
 
     if (!response.ok) {
-        throw new Error(`Could not create ${table}.`);
+        throw new Error(`Could not create ${table} (${response.status}).`);
     }
 
     return response.json();
@@ -275,7 +280,7 @@ async function updateRow(table, id, payload) {
     });
 
     if (!response.ok) {
-        throw new Error(`Could not update ${table}.`);
+        throw new Error(`Could not update ${table} (${response.status}).`);
     }
 
     return response.json();
@@ -288,7 +293,7 @@ async function deleteRow(table, id) {
     });
 
     if (!response.ok) {
-        throw new Error(`Could not delete ${table}.`);
+        throw new Error(`Could not delete ${table} (${response.status}).`);
     }
 }
 
@@ -369,7 +374,7 @@ async function getSettings() {
     });
 
     if (!response.ok) {
-        throw new Error('Could not load settings.');
+        throw new Error(`Could not load settings (${response.status}).`);
     }
 
     const rows = await response.json();
@@ -643,7 +648,7 @@ async function clearAllContent() {
         });
 
         if (!response.ok) {
-            throw new Error(`Could not clear ${table}.`);
+            throw new Error(`Could not clear ${table} (${response.status}).`);
         }
     }));
     await touchSettings();

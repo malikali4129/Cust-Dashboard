@@ -4,7 +4,8 @@
 
 const dashboardState = {
     timeZone: DashboardUtils.TIME_ZONE_LABEL,
-    serverLive: false
+    serverLive: false,
+    lastUpdated: null
 };
 
 function renderStats(stats) {
@@ -171,7 +172,13 @@ async function updateMeta() {
                 : 'Pending';
         }
     } catch (error) {
+        console.warn('[updateMeta] Settings fetch failed:', error.message);
         DashboardUtils.setActiveTimeZone(DashboardUtils.TIME_ZONE_LABEL);
+        const updated = document.getElementById('last-updated');
+        if (updated) {
+            updated.textContent = 'Sync pending';
+        }
+        throw error;
     }
 }
 
@@ -345,7 +352,6 @@ async function submitFeedback() {
 }
 
 async function initDashboard() {
-
     const statsGrid = document.getElementById('stats-grid');
     if (statsGrid) {
         statsGrid.innerHTML = '<div class="panel-loading">Loading dashboard...</div>';
@@ -353,9 +359,24 @@ async function initDashboard() {
 
     try {
         await updateMeta();
-        const stats = await DashboardData.getStats();
-        renderStats(stats);
-        setServerLiveState(true);
+        // Load settings + stats in parallel; gracefully degrade if either fails
+        const [settingsResult, statsResult] = await Promise.allSettled([
+            DashboardData.getSettings(),
+            DashboardData.getStats()
+        ]);
+
+        if (settingsResult.status === 'fulfilled') {
+            dashboardState.lastUpdated = settingsResult.value.lastUpdated || null;
+        } else {
+            console.warn('[initDashboard] getSettings failed:', settingsResult.reason?.message);
+        }
+
+        if (statsResult.status === 'fulfilled') {
+            renderStats(statsResult.value);
+            setServerLiveState(true);
+        } else {
+            console.warn('[initDashboard] getStats failed:', statsResult.reason?.message);
+        }
 
         await Promise.all([
             renderSection(renderAnnouncements, () => DashboardData.getAnnouncements({ limit: 5 }), 'announcements-list'),
@@ -363,13 +384,90 @@ async function initDashboard() {
             renderSection(renderDeadlines, () => DashboardData.getDeadlines({ limit: 5 }), 'deadlines-list'),
             renderSection(renderQuizzes, () => DashboardData.getQuizzes({ limit: 4 }), 'quizzes-list')
         ]);
+
+        // Start update polling + offline detection only after initial load
+        startUpdatePolling();
+        initOfflineDetection();
     } catch (error) {
+        console.error('[initDashboard] Load failed:', error.message || error);
         setServerLiveState(false);
         if (statsGrid) {
-            statsGrid.innerHTML = '<div class="panel-loading error">Could not reach Supabase. The app shell is available offline, but data requires a connection.</div>';
+            statsGrid.innerHTML = `<div class="panel-loading error">${DashboardUtils.escapeHtml(error.message || 'Could not reach Supabase.')}</div>`;
         }
-        DashboardUtils.showToast('Student data could not be loaded.', 'error');
+        DashboardUtils.showToast('Student data could not be loaded. ' + (error.message || ''), 'error');
+        // Still start polling so the update prompt works when connection returns
+        startUpdatePolling();
+        initOfflineDetection();
     }
+}
+
+// ─── 15-second update polling ─────────────────────────────────────────────
+let updatePollingInterval = null;
+
+async function startUpdatePolling() {
+    if (updatePollingInterval) {
+        clearInterval(updatePollingInterval);
+    }
+
+    updatePollingInterval = setInterval(async () => {
+        if (!navigator.onLine) {
+            return; // Skip polling while offline
+        }
+
+        try {
+            const settings = await DashboardData.getSettings();
+            const currentLastUpdated = settings.lastUpdated || null;
+
+            // Detect a real database change
+            if (dashboardState.lastUpdated !== null &&
+                currentLastUpdated !== null &&
+                currentLastUpdated !== dashboardState.lastUpdated) {
+                showUpdatePrompt();
+                clearInterval(updatePollingInterval);
+            }
+        } catch (_) {
+            // Network error — ignore silently, next poll will retry
+        }
+    }, 15000);
+}
+
+function showUpdatePrompt() {
+    const overlay = document.getElementById('update-modal-overlay');
+    if (overlay) {
+        overlay.classList.add('active');
+    }
+}
+
+function applyDashboardUpdate() {
+    window.location.reload();
+}
+
+window.applyDashboardUpdate = applyDashboardUpdate;
+
+// ─── Offline detection ──────────────────────────────────────────────────────
+function initOfflineDetection() {
+    const banner = document.getElementById('offline-banner');
+
+    const goOffline = () => {
+        if (banner) {
+            banner.classList.add('is-visible');
+        }
+    };
+
+    const goOnline = () => {
+        if (banner) {
+            banner.classList.remove('is-visible');
+        }
+        // Restart polling now that connection is back
+        startUpdatePolling();
+    };
+
+    if (!navigator.onLine) {
+        goOffline();
+    }
+
+    window.addEventListener('offline', goOffline);
+    window.addEventListener('online', goOnline);
 }
 
 document.addEventListener('DOMContentLoaded', () => {
