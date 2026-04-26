@@ -358,7 +358,14 @@ svg {
   font-weight: 500;
 }
 
+.header-meta-item:hover {
+  border-color: var(--border-hover);
+  background: var(--bg-surface-hover);
+  cursor: pointer;
+}
+
 .server-dot {
+
   width: 8px;
   height: 8px;
   border-radius: 50%;
