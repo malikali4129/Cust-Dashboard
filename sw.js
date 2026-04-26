@@ -1,6 +1,7 @@
-const CACHE_VERSION = 'v8';
+const CACHE_VERSION = 'v9';
 const SHELL_CACHE = `dashboard-shell-${CACHE_VERSION}`;
 const FONT_CACHE = `dashboard-fonts-${CACHE_VERSION}`;
+const DATA_CACHE = `dashboard-data-${CACHE_VERSION}`;
 
 const SHELL_ASSETS = [
     './',
@@ -42,7 +43,12 @@ self.addEventListener('activate', (event) => {
     event.waitUntil(
         caches.keys().then((keys) => Promise.all(
             keys
-                .filter((key) => key.startsWith('dashboard-') && key !== SHELL_CACHE && key !== FONT_CACHE)
+                .filter((key) =>
+                    key.startsWith('dashboard-') &&
+                    key !== SHELL_CACHE &&
+                    key !== FONT_CACHE &&
+                    key !== DATA_CACHE
+                )
                 .map((key) => caches.delete(key))
         ))
     );
@@ -65,6 +71,12 @@ self.addEventListener('fetch', (event) => {
     // Google Fonts: stale-while-revalidate
     if (FONT_ORIGINS.includes(url.origin)) {
         event.respondWith(staleWhileRevalidate(event.request, FONT_CACHE));
+        return;
+    }
+
+    // Supabase API requests: cache-first with network fallback
+    if (url.host.includes('supabase') || url.pathname.startsWith('/rest/v1/')) {
+        event.respondWith(cacheFirstWithFallback(event.request, DATA_CACHE));
         return;
     }
 
@@ -124,5 +136,26 @@ async function fetchAndCache(request, cache) {
         }
     } catch (_) {
         // Network failed — that's fine, we already served the cached response
+    }
+}
+
+// Cache-first for API data: try cache, fall back to network, store result
+async function cacheFirstWithFallback(request, cacheName) {
+    const cache = await caches.open(cacheName);
+    const cached = await cache.match(request);
+    if (cached) {
+        return cached;
+    }
+    try {
+        const response = await fetch(request);
+        if (response.ok) {
+            cache.put(request, response.clone());
+        }
+        return response;
+    } catch (_) {
+        // Return a minimal empty array JSON if truly offline with no cache
+        return new Response(JSON.stringify([]), {
+            headers: { 'Content-Type': 'application/json' }
+        });
     }
 }
