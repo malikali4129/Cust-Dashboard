@@ -4,8 +4,38 @@
  */
 
 const ADMIN_SESSION_KEY = 'dashboard_admin_session';
+const DATA_CACHE_KEY = 'dashboard_data_cache';
 const DEFAULT_PAGE_SIZE = 8;
 const DEFAULT_TIME_ZONE = 'Asia/Karachi';
+
+// ─── Local Storage Cache ───────────────────────────────────────────────────
+function getLocalCache() {
+    try {
+        const data = localStorage.getItem(DATA_CACHE_KEY);
+        return data ? JSON.parse(data) : {};
+    } catch {
+        return {};
+    }
+}
+
+function setLocalCache(key, value) {
+    try {
+        const cache = getLocalCache();
+        cache[key] = { data: value, timestamp: Date.now() };
+        localStorage.setItem(DATA_CACHE_KEY, JSON.stringify(cache));
+    } catch (err) {
+        console.warn('[data] localStorage save failed:', err.message);
+    }
+}
+
+function getLocalCacheData(key) {
+    try {
+        const cache = getLocalCache();
+        return cache[key]?.data;
+    } catch {
+        return null;
+    }
+}
 
 function isSupabaseConfigured() {
     return typeof SUPABASE_CONFIG !== 'undefined' &&
@@ -195,6 +225,7 @@ async function pagedRead(table, { page = 1, pageSize = DEFAULT_PAGE_SIZE, order,
         `order=${order}`,
         encodeSearch(fields, search)
     ]);
+    const cacheKey = `${table}_page_${page}_${pageSize}_${search}`;
 
     try {
         const response = await request(`/rest/v1/${table}?${query}`, {
@@ -209,16 +240,26 @@ async function pagedRead(table, { page = 1, pageSize = DEFAULT_PAGE_SIZE, order,
         }
 
         const items = await response.json();
-        return {
+        const result = {
             items: items.map(normalize),
             total: parseCount(response),
             page,
             pageSize
         };
+
+        // Cache successful response to localStorage
+        setLocalCache(cacheKey, result);
+
+        return result;
     } catch (err) {
-        // If offline and no cache, return empty result instead of throwing
+        // If offline, try localStorage cache first
         if (!navigator.onLine) {
-            console.warn(`[pagedRead] Offline - returning empty ${table}`);
+            const cached = getLocalCacheData(cacheKey);
+            if (cached) {
+                console.warn(`[pagedRead] Offline - using cached ${table}`);
+                return cached;
+            }
+            console.warn(`[pagedRead] Offline - no cache for ${table}`);
             return { items: [], total: 0, page, pageSize };
         }
         throw err;
@@ -231,6 +272,7 @@ async function listRead(table, { limit, order, normalize = (item) => item } = {}
         `order=${order}`,
         limit ? `limit=${limit}` : ''
     ]);
+    const cacheKey = `${table}_list_${limit || 'all'}_${order}`;
 
     try {
         const response = await request(`/rest/v1/${table}?${query}`, {
@@ -242,11 +284,21 @@ async function listRead(table, { limit, order, normalize = (item) => item } = {}
         }
 
         const items = await response.json();
-        return items.map(normalize);
+        const result = items.map(normalize);
+
+        // Cache successful response to localStorage
+        setLocalCache(cacheKey, result);
+
+        return result;
     } catch (err) {
-        // If offline and no cache, return empty array instead of throwing
+        // If offline, try localStorage cache first
         if (!navigator.onLine) {
-            console.warn(`[listRead] Offline - returning empty ${table}`);
+            const cached = getLocalCacheData(cacheKey);
+            if (cached) {
+                console.warn(`[listRead] Offline - using cached ${table}`);
+                return cached;
+            }
+            console.warn(`[listRead] Offline - no cache for ${table}`);
             return [];
         }
         throw err;
@@ -398,13 +450,23 @@ async function getSettings() {
 
         const rows = await response.json();
         const row = rows[0] || {};
-        return {
+        const result = {
             timeZone: DEFAULT_TIME_ZONE,
             lastUpdated: row.last_updated || null
         };
+
+        // Cache to localStorage
+        setLocalCache('settings', result);
+
+        return result;
     } catch (err) {
-        // If offline and no cache, return default settings instead of throwing
+        // If offline, try localStorage cache first
         if (!navigator.onLine) {
+            const cached = getLocalCacheData('settings');
+            if (cached) {
+                console.warn('[getSettings] Offline - using cached settings');
+                return cached;
+            }
             console.warn('[getSettings] Offline - returning defaults');
             return {
                 timeZone: DEFAULT_TIME_ZONE,
@@ -621,33 +683,61 @@ async function deleteFeedback(id) {
 
 async function getStats() {
     const nowIso = new Date().toISOString();
-    const [
-        totalAnnouncements,
-        totalAssignments,
-        pendingAssignments,
-        completedAssignments,
-        upcomingDeadlines,
-        totalQuizzes,
-        upcomingQuizzes
-    ] = await Promise.all([
-        countRead('announcements'),
-        countRead('assignments'),
-        countRead('assignments', ['status=eq.pending']),
-        countRead('assignments', ['status=eq.completed']),
-        countRead('deadlines', [`date=gte.${encodeURIComponent(nowIso)}`]),
-        countRead('quizzes'),
-        countRead('quizzes', [`date=gte.${encodeURIComponent(nowIso)}`])
-    ]);
 
-    return {
-        totalAnnouncements,
-        totalAssignments,
-        pendingAssignments,
-        completedAssignments,
-        upcomingDeadlines,
-        totalQuizzes,
-        upcomingQuizzes
-    };
+    try {
+        const [
+            totalAnnouncements,
+            totalAssignments,
+            pendingAssignments,
+            completedAssignments,
+            upcomingDeadlines,
+            totalQuizzes,
+            upcomingQuizzes
+        ] = await Promise.all([
+            countRead('announcements'),
+            countRead('assignments'),
+            countRead('assignments', ['status=eq.pending']),
+            countRead('assignments', ['status=eq.completed']),
+            countRead('deadlines', [`date=gte.${encodeURIComponent(nowIso)}`]),
+            countRead('quizzes'),
+            countRead('quizzes', [`date=gte.${encodeURIComponent(nowIso)}`])
+        ]);
+
+        const result = {
+            totalAnnouncements,
+            totalAssignments,
+            pendingAssignments,
+            completedAssignments,
+            upcomingDeadlines,
+            totalQuizzes,
+            upcomingQuizzes
+        };
+
+        // Cache to localStorage
+        setLocalCache('stats', result);
+
+        return result;
+    } catch (err) {
+        // If offline, try localStorage cache first
+        if (!navigator.onLine) {
+            const cached = getLocalCacheData('stats');
+            if (cached) {
+                console.warn('[getStats] Offline - using cached stats');
+                return cached;
+            }
+            console.warn('[getStats] Offline - returning default stats');
+            return {
+                totalAnnouncements: 0,
+                totalAssignments: 0,
+                pendingAssignments: 0,
+                completedAssignments: 0,
+                upcomingDeadlines: 0,
+                totalQuizzes: 0,
+                upcomingQuizzes: 0
+            };
+        }
+        throw err;
+    }
 }
 
 async function exportData() {
