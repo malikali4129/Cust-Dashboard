@@ -260,6 +260,56 @@ function readFile(file) {
     });
 }
 
+/* ---------- Validation Utilities ---------- */
+
+function debounce(fn, delay = 300) {
+    let timeout;
+    return function (...args) {
+        clearTimeout(timeout);
+        timeout = setTimeout(() => fn.apply(this, args), delay);
+    };
+}
+
+function validateLength(value, min, max) {
+    const str = String(value || '').trim();
+    if (min !== undefined && str.length < min) {
+        return `Must be at least ${min} characters.`;
+    }
+    if (max !== undefined && str.length > max) {
+        return `Must be at most ${max} characters.`;
+    }
+    return null;
+}
+
+function validateYear(dateString) {
+    if (!dateString) {
+        return 'Date is required.';
+    }
+    const year = new Date(dateString).getFullYear();
+    const currentYear = new Date().getFullYear();
+    if (isNaN(year) || String(year).length !== 4) {
+        return 'Year must be exactly 4 digits.';
+    }
+    if (year < currentYear) {
+        return `Year must be ${currentYear} or later.`;
+    }
+    return null;
+}
+
+function validateNumber(value, min, max) {
+    const num = Number(value);
+    if (isNaN(num)) {
+        return 'Must be a valid number.';
+    }
+    if (min !== undefined && num < min) {
+        return `Must be at least ${min}.`;
+    }
+    if (max !== undefined && num > max) {
+        return `Must be at most ${max}.`;
+    }
+    return null;
+}
+
 function updateConnectivityUI() {
     const online = navigator.onLine;
     document.body.classList.toggle('is-offline', !online);
@@ -324,5 +374,9 @@ window.DashboardUtils = {
     toLocalInputValue,
     confirmAction,
     downloadJSON,
-    readFile
+    readFile,
+    debounce,
+    validateLength,
+    validateYear,
+    validateNumber
 };

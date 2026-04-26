@@ -55,11 +55,11 @@ const TAB_CONFIG = {
             <form id="item-form" class="editor-form">
                 <label class="field">
                     <span>Title</span>
-                    <input class="form-input" name="title" value="${DashboardUtils.escapeHtml(item.title || '')}" required>
+                    <input class="form-input" name="title" value="${DashboardUtils.escapeHtml(item.title || '')}" minlength="2" maxlength="200" required>
                 </label>
                 <label class="field">
                     <span>Content</span>
-                    <textarea class="form-textarea" name="content" required>${DashboardUtils.escapeHtml(item.content || '')}</textarea>
+                    <textarea class="form-textarea" name="content" minlength="2" maxlength="2000" required>${DashboardUtils.escapeHtml(item.content || '')}</textarea>
                 </label>
                 <label class="field">
                     <span>Priority</span>
@@ -111,15 +111,15 @@ const TAB_CONFIG = {
             <form id="item-form" class="editor-form">
                 <label class="field">
                     <span>Title</span>
-                    <input class="form-input" name="title" value="${DashboardUtils.escapeHtml(item.title || '')}" required>
+                    <input class="form-input" name="title" value="${DashboardUtils.escapeHtml(item.title || '')}" minlength="2" maxlength="200" required>
                 </label>
                 <label class="field">
                     <span>Subject</span>
-                    <input class="form-input" name="subject" value="${DashboardUtils.escapeHtml(item.subject || '')}">
+                    <input class="form-input" name="subject" value="${DashboardUtils.escapeHtml(item.subject || '')}" maxlength="100">
                 </label>
                 <label class="field">
                     <span>Description</span>
-                    <textarea class="form-textarea" name="description" required>${DashboardUtils.escapeHtml(item.description || '')}</textarea>
+                    <textarea class="form-textarea" name="description" minlength="2" maxlength="2000" required>${DashboardUtils.escapeHtml(item.description || '')}</textarea>
                 </label>
                 <label class="field">
                     <span>Deadline</span>
@@ -173,11 +173,11 @@ const TAB_CONFIG = {
             <form id="item-form" class="editor-form">
                 <label class="field">
                     <span>Title</span>
-                    <input class="form-input" name="title" value="${DashboardUtils.escapeHtml(item.title || '')}" required>
+                    <input class="form-input" name="title" value="${DashboardUtils.escapeHtml(item.title || '')}" minlength="2" maxlength="200" required>
                 </label>
                 <label class="field">
                     <span>Category</span>
-                    <input class="form-input" name="category" value="${DashboardUtils.escapeHtml(item.category || '')}">
+                    <input class="form-input" name="category" value="${DashboardUtils.escapeHtml(item.category || '')}" maxlength="100">
                 </label>
                 <label class="field">
                     <span>Date and time</span>
@@ -234,11 +234,11 @@ const TAB_CONFIG = {
             <form id="item-form" class="editor-form">
                 <label class="field">
                     <span>Title</span>
-                    <input class="form-input" name="title" value="${DashboardUtils.escapeHtml(item.title || '')}" required>
+                    <input class="form-input" name="title" value="${DashboardUtils.escapeHtml(item.title || '')}" minlength="2" maxlength="200" required>
                 </label>
                 <label class="field">
                     <span>Subject</span>
-                    <input class="form-input" name="subject" value="${DashboardUtils.escapeHtml(item.subject || '')}">
+                    <input class="form-input" name="subject" value="${DashboardUtils.escapeHtml(item.subject || '')}" maxlength="100">
                 </label>
                 <label class="field">
                     <span>Date and time</span>
@@ -246,11 +246,11 @@ const TAB_CONFIG = {
                 </label>
                 <label class="field">
                     <span>Duration</span>
-                    <input class="form-input" type="number" min="1" name="duration" value="${item.duration || 30}" required>
+                    <input class="form-input" type="number" min="1" max="480" name="duration" value="${item.duration || 30}" required>
                 </label>
                 <label class="field">
                     <span>Total marks</span>
-                    <input class="form-input" type="number" min="1" name="totalMarks" value="${item.totalMarks || ''}">
+                    <input class="form-input" type="number" min="1" max="10000" name="totalMarks" value="${item.totalMarks || ''}">
                 </label>
             </form>
         `
@@ -323,7 +323,7 @@ function switchTab(tab) {
     adminState.search = '';
     adminState.editingId = null;
 
-    document.querySelectorAll('.tab, .nav-item[data-tab]').forEach((node) => {
+    document.querySelectorAll('.tab').forEach((node) => {
         node.classList.toggle('active', node.dataset.tab === tab);
     });
 
@@ -372,7 +372,7 @@ function renderRecords(container) {
                 </div>
                 <label class="search-shell">
                     <span>Search</span>
-                    <input class="form-input" value="${DashboardUtils.escapeHtml(adminState.search)}" placeholder="${DashboardUtils.escapeHtml(config.searchPlaceholder)}" oninput="updateSearch(this.value)">
+                    <input class="form-input" value="${DashboardUtils.escapeHtml(adminState.search)}" placeholder="${DashboardUtils.escapeHtml(config.searchPlaceholder)}" oninput="debouncedUpdateSearch(this.value)">
                 </label>
             </div>
             <div class="table-shell">
@@ -384,7 +384,6 @@ function renderRecords(container) {
                 <div class="mobile-record-list">
                     ${adminState.items.map(config.mobileCard).join('') || '<div class="empty-state"><h3>No results</h3><p>Try a different search or create a new record.</p></div>'}
                 </div>
-            </div>
             <div class="pagination-bar">
                 <button class="btn btn-secondary btn-sm" onclick="changePage(-1)" ${adminState.page === 1 ? 'disabled' : ''}>Previous</button>
                 <span>Page ${adminState.page} of ${totalPages}</span>
@@ -403,7 +402,6 @@ function renderSettings(container) {
                         <p class="eyebrow">Admin access</p>
                         <h2>Change password</h2>
                     </div>
-                </div>
                 <form class="editor-form" onsubmit="changePassword(event)">
                     <label class="field">
                         <span>Current password</span>
@@ -426,7 +424,6 @@ function renderSettings(container) {
                         <p class="eyebrow">Calendar clarity</p>
                         <h2>Pakistan time only</h2>
                     </div>
-                </div>
                 <div class="settings-note">
                     All rendered dates use Asia/Karachi and can no longer be changed from the admin panel.
                 </div>
@@ -437,7 +434,6 @@ function renderSettings(container) {
                         <p class="eyebrow">Cloud maintenance</p>
                         <h2>Backup and reset</h2>
                     </div>
-                </div>
                 <div class="danger-actions">
                     <button class="btn btn-secondary" onclick="DashboardData.exportData()">Export JSON</button>
                     <label class="btn btn-secondary file-trigger">
@@ -461,6 +457,9 @@ function updateSearch(value) {
     adminState.page = 1;
     renderCurrentTab();
 }
+
+const debouncedUpdateSearch = DashboardUtils.debounce(updateSearch, 300);
+window.debouncedUpdateSearch = debouncedUpdateSearch;
 
 function openAddModal() {
     adminState.editingId = null;
@@ -490,7 +489,48 @@ async function saveItem() {
         return;
     }
 
-    const payload = currentConfig().toPayload(Object.fromEntries(new FormData(form).entries()));
+    const formData = Object.fromEntries(new FormData(form).entries());
+
+    // Client-side validation
+    const errors = [];
+
+    const titleError = DashboardUtils.validateLength(formData.title, 2, 200);
+    if (titleError) errors.push(`Title: ${titleError}`);
+
+    const contentField = formData.content || formData.description;
+    if (contentField) {
+        const contentError = DashboardUtils.validateLength(contentField, 2, 2000);
+        if (contentError) errors.push(`Content: ${contentError}`);
+    }
+
+    const subjectField = formData.subject || formData.category;
+    if (subjectField) {
+        const subjectError = DashboardUtils.validateLength(subjectField, 0, 100);
+        if (subjectError) errors.push(`Subject/Category: ${subjectError}`);
+    }
+
+    const dateField = formData.deadline || formData.date;
+    if (dateField) {
+        const yearError = DashboardUtils.validateYear(DashboardUtils.toIsoFromLocalInput(dateField));
+        if (yearError) errors.push(`Date: ${yearError}`);
+    }
+
+    if (formData.duration) {
+        const durationError = DashboardUtils.validateNumber(formData.duration, 1, 480);
+        if (durationError) errors.push(`Duration: ${durationError}`);
+    }
+
+    if (formData.totalMarks) {
+        const marksError = DashboardUtils.validateNumber(formData.totalMarks, 1, 10000);
+        if (marksError) errors.push(`Total marks: ${marksError}`);
+    }
+
+    if (errors.length > 0) {
+        DashboardUtils.showToast(errors[0], 'error');
+        return;
+    }
+
+    const payload = currentConfig().toPayload(formData);
     const config = currentConfig();
 
     if (!navigator.onLine) {

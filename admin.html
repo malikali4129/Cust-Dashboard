@@ -12,6 +12,13 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body class="admin-body">
+    <noscript>
+        <div class="noscript-fallback">
+            <h2>JavaScript Required</h2>
+            <p>The Admin Panel requires JavaScript to manage content and connect to Supabase. Please enable JavaScript in your browser settings to continue.</p>
+        </div>
+    </noscript>
+
     <section id="login-screen" class="login-shell">
         <div class="login-card">
             <p class="eyebrow">Secure Access</p>
@@ -39,30 +46,20 @@
     </section>
 
     <div id="admin-dashboard" class="app-shell hidden">
-        <button class="mobile-toggle" aria-label="Open navigation">Menu</button>
-        <aside class="sidebar">
-            <div class="sidebar-brand">
-                <p class="eyebrow">Control room</p>
-                <h1>Admin Panel</h1>
-                <p class="sidebar-copy">Authenticated changes, cloud-only content, and offline-aware visibility.</p>
-            </div>
-            <nav class="sidebar-nav">
-                <button class="nav-item active" data-tab="announcements" onclick="switchTab('announcements')">Announcements</button>
-                <button class="nav-item" data-tab="assignments" onclick="switchTab('assignments')">Assignments</button>
-                <button class="nav-item" data-tab="deadlines" onclick="switchTab('deadlines')">Deadlines</button>
-                <button class="nav-item" data-tab="quizzes" onclick="switchTab('quizzes')">Quizzes</button>
-                <button class="nav-item" data-tab="settings" onclick="switchTab('settings')">Settings</button>
-                <a class="nav-item" href="index.html">Student view</a>
-            </nav>
-            <div class="sidebar-footer admin-sidebar-footer">
-                <button class="btn btn-secondary" type="button" onclick="DashboardUtils.toggleTheme()">
-                    Theme <span data-theme-toggle-label>Dark</span>
-                </button>
-                <button class="btn btn-danger" type="button" onclick="handleLogout()">Log out</button>
-            </div>
-        </aside>
+        <main class="main-content admin-main">
+            <header class="admin-topbar">
+                <div class="admin-topbar-brand">
+                    <h1>Admin Panel</h1>
+                </div>
+                <div class="admin-topbar-actions">
+                    <button class="btn btn-secondary btn-sm" type="button" onclick="DashboardUtils.toggleTheme()">
+                        Theme <span data-theme-toggle-label>Dark</span>
+                    </button>
+                    <a class="btn btn-secondary btn-sm" href="index.html">Student view</a>
+                    <button class="btn btn-danger btn-sm" type="button" onclick="handleLogout()">Log out</button>
+                </div>
+            </header>
 
-        <main class="main-content">
             <section class="hero-panel admin-hero">
                 <div>
                     <p class="eyebrow">Control Room</p>

@@ -12,6 +12,13 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body class="dashboard-body">
+    <noscript>
+        <div class="noscript-fallback">
+            <h2>JavaScript Required</h2>
+            <p>The University Dashboard requires JavaScript to display live data from Supabase. Please enable JavaScript in your browser settings to continue.</p>
+        </div>
+    </noscript>
+
     <div class="app-shell">
         <button class="mobile-toggle" aria-label="Open navigation">Menu</button>
         <aside class="sidebar">
@@ -48,7 +55,6 @@
                         <span class="meta-label">Last update</span>
                         <strong id="last-updated">Sync pending</strong>
                     </div>
-                </div>
             </header>
 
             <section class="count-bar" id="stats-grid"></section>
@@ -95,7 +101,6 @@
                 <button class="modal-close" type="button" onclick="DashboardUtils.closeModal('detail-modal')">Close</button>
             </div>
             <div id="detail-modal-body" class="modal-body"></div>
-        </div>
     </div>
 
     <script src="config.js"></script>
