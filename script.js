@@ -37,19 +37,36 @@ function ensureToastContainer() {
     return container;
 }
 
-function showToast(message, type = 'info', duration = 3200) {
+const ICONS = {
+    success: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="8.5"/><polyline points="6.5 10 9 12.5 13.5 7.5"/></svg>`,
+    error:   `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="8.5"/><line x1="7" y1="7" x2="13" y2="13"/><line x1="13" y1="7" x2="7" y2="13"/></svg>`,
+    warning: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2.5L18 17.5H2L10 2.5z"/><line x1="10" y1="8.5" x2="10" y2="12"/><circle cx="10" cy="14.5" r="0.75" fill="currentColor"/></svg>`,
+    info:    `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="8.5"/><line x1="10" y1="9" x2="10" y2="14"/><circle cx="10" cy="6.5" r="0.75" fill="currentColor"/></svg>`
+};
+
+function showToast(message, type = 'info', duration = 3500) {
     const container = ensureToastContainer();
     const toast = document.createElement('div');
     toast.className = `toast ${type}`;
+    toast.setAttribute('role', 'alert');
+
+    const icon = ICONS[type] || ICONS.info;
     toast.innerHTML = `
-        <span class="toast-dot"></span>
-        <span>${escapeHtml(message)}</span>
+        <span class="toast-icon">${icon}</span>
+        <span class="toast-msg">${escapeHtml(message)}</span>
+        <button class="toast-close" aria-label="Dismiss" onclick="this.closest('.toast').remove()">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                <line x1="4" y1="4" x2="12" y2="12"></line>
+                <line x1="12" y1="4" x2="4" y2="12"></line>
+            </svg>
+        </button>
     `;
     container.appendChild(toast);
 
+    // Auto-dismiss
     window.setTimeout(() => {
         toast.classList.add('toast-exit');
-        window.setTimeout(() => toast.remove(), 220);
+        window.setTimeout(() => toast.remove(), 250);
     }, duration);
 }
 

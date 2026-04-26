@@ -383,12 +383,12 @@ function renderRecords(container) {
                 </label>
             </div>
             <div class="table-shell">
-                <table class="data-table desktop-table">
+                <table class="data-table desktop-table" data-desktop-only>
                     <tbody>
                         ${adminState.items.map(config.desktopRow).join('') || '<tr><td colspan="6">No results.</td></tr>'}
                     </tbody>
                 </table>
-                <div class="mobile-record-list">
+                <div class="mobile-record-list" data-mobile-only>
                     ${adminState.items.map(config.mobileCard).join('') || '<div class="empty-state"><h3>No results</h3><p>Try a different search or create a new record.</p></div>'}
                 </div>
             </div>
@@ -434,18 +434,9 @@ function renderFeedback(container) {
                         <input class="form-input" value="${DashboardUtils.escapeHtml(adminState.search)}" placeholder="Search name or suggestion" oninput="debouncedUpdateSearch(this.value)">
                     </label>
                 </div>
-                <div class="table-shell">
-                    <table class="data-table desktop-table">
-                        <thead>
-                            <tr>
-                                <th>Name</th>
-                                <th>Rating</th>
-                                <th>Suggestion</th>
-                                <th>Sent</th>
-                                <th></th>
-                            </tr>
-                        </thead>
-                        <tbody>
+                <div class="table-shell" id="feedback-body-wrapper">
+                    <table class="data-table desktop-table" data-desktop-only>
+                        <tbody id="feedback-desktop-tbody">
                             ${adminState.items.map((item) => `
                                 <tr>
                                     <td>${DashboardUtils.escapeHtml(item.name)}</td>
@@ -462,7 +453,7 @@ function renderFeedback(container) {
                             `).join('') || '<tr><td colspan="5">No feedback yet.</td></tr>'}
                         </tbody>
                     </table>
-                    <div class="mobile-record-list">
+                    <div class="mobile-record-list" id="feedback-mobile-list" data-mobile-only>
                         ${adminState.items.map((item) => `
                             <article class="record-card">
                                 <div class="record-card-top">
@@ -490,6 +481,47 @@ function renderFeedback(container) {
         container.innerHTML = '<div class="panel-loading error">Could not load feedback. Check your connection or admin session.</div>';
     });
 }
+
+function renderFeedbackBody() {
+    const desktopTbody = document.getElementById('feedback-desktop-tbody');
+    const mobileList = document.getElementById('feedback-mobile-list');
+
+    if (desktopTbody) {
+        desktopTbody.innerHTML = adminState.items.map((item) => `
+            <tr>
+                <td>${DashboardUtils.escapeHtml(item.name)}</td>
+                <td><div class="feedback-table-rating">${renderStarRating(item.rating)}</div></td>
+                <td><span class="feedback-preview">${DashboardUtils.escapeHtml(item.suggestion)}</span></td>
+                <td>${DashboardUtils.formatDateTime(item.created_at, adminState.timeZone)}</td>
+                <td>
+                    <div class="table-actions">
+                        <button class="btn btn-secondary btn-sm" onclick="openFeedbackDetail('${item.id}')">Open</button>
+                        <button class="btn btn-danger btn-sm" onclick="deleteFeedbackItem('${item.id}')">Delete</button>
+                    </div>
+                </td>
+            </tr>
+        `).join('') || '<tr><td colspan="5">No feedback yet.</td></tr>';
+    }
+
+    if (mobileList) {
+        mobileList.innerHTML = adminState.items.map((item) => `
+            <article class="record-card">
+                <div class="record-card-top">
+                    <h3>${DashboardUtils.escapeHtml(item.name)}</h3>
+                    <div class="feedback-table-rating">${renderStarRating(item.rating)}</div>
+                </div>
+                <p>${DashboardUtils.escapeHtml(item.suggestion)}</p>
+                <small>${DashboardUtils.formatDateTime(item.created_at, adminState.timeZone)}</small>
+                <div class="record-card-actions">
+                    <button class="btn btn-secondary btn-sm" onclick="openFeedbackDetail('${item.id}')">Open</button>
+                    <button class="btn btn-danger btn-sm" onclick="deleteFeedbackItem('${item.id}')">Delete</button>
+                </div>
+            </article>
+        `).join('') || '<div class="empty-state"><h3>No feedback yet</h3><p>Feedback from users will appear here.</p></div>';
+    }
+}
+
+window.renderFeedbackBody = renderFeedbackBody;
 
 function openFeedbackDetail(id) {
     const item = adminState.items.find((entry) => entry.id === id);
@@ -544,10 +576,7 @@ async function deleteFeedbackItem(id) {
     adminState.total = Math.max(0, adminState.total - 1);
 
     if (adminState.currentTab === 'feedback') {
-        const container = document.getElementById('tab-content');
-        if (container) {
-            renderFeedback(container);
-        }
+        renderFeedbackBody();
     }
 
     try {
@@ -558,10 +587,7 @@ async function deleteFeedbackItem(id) {
             adminState.items = previousItems;
             adminState.total += 1;
             if (adminState.currentTab === 'feedback') {
-                const container = document.getElementById('tab-content');
-                if (container) {
-                    renderFeedback(container);
-                }
+                renderFeedbackBody();
             }
         }
         DashboardUtils.showToast(error.message || 'Delete failed.', 'error');
