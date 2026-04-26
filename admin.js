@@ -13,6 +13,8 @@ const adminState = {
     timeZone: DashboardUtils.TIME_ZONE_LABEL
 };
 
+let feedbackViewingId = null;
+
 const TAB_CONFIG = {
     announcements: {
         title: 'Announcements',
@@ -342,6 +344,11 @@ async function renderCurrentTab() {
         return;
     }
 
+    if (adminState.currentTab === 'feedback') {
+        renderFeedback(container);
+        return;
+    }
+
     container.innerHTML = '<div class="panel-loading">Loading records...</div>';
 
     try {
@@ -391,6 +398,173 @@ function renderRecords(container) {
             </div>
         </section>
     `;
+}
+
+function renderStarRating(rating, readonly = true) {
+    const stars = Array.from({ length: 5 }, (_, i) => {
+        const filled = i < rating;
+        return `<span class="star ${filled ? 'is-filled' : 'is-empty'}">★</span>`;
+    }).join('');
+    return `<div class="star-rating ${readonly ? 'is-readonly' : ''}">${stars}</div>`;
+}
+
+function renderFeedback(container) {
+    container.innerHTML = '<div class="panel-loading">Loading feedback...</div>';
+
+    DashboardData.getFeedbackPage({
+        page: adminState.page,
+        pageSize: adminState.pageSize,
+        search: adminState.search
+    }).then((result) => {
+        adminState.items = result.items;
+        adminState.total = result.total;
+
+        const totalPages = Math.max(1, Math.ceil(adminState.total / adminState.pageSize));
+
+        container.innerHTML = `
+            <section class="panel">
+                <div class="panel-header">
+                    <div>
+                        <p class="eyebrow">User feedback</p>
+                        <h2>Feedback</h2>
+                    </div>
+                    <label class="search-shell">
+                        <span>Search</span>
+                        <input class="form-input" value="${DashboardUtils.escapeHtml(adminState.search)}" placeholder="Search name or suggestion" oninput="debouncedUpdateSearch(this.value)">
+                    </label>
+                </div>
+                <div class="table-shell">
+                    <table class="data-table desktop-table">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Rating</th>
+                                <th>Suggestion</th>
+                                <th>Sent</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${adminState.items.map((item) => `
+                                <tr>
+                                    <td>${DashboardUtils.escapeHtml(item.name)}</td>
+                                    <td><div class="feedback-table-rating">${renderStarRating(item.rating)}</div></td>
+                                    <td><span class="feedback-preview">${DashboardUtils.escapeHtml(item.suggestion)}</span></td>
+                                    <td>${DashboardUtils.formatDateTime(item.created_at, adminState.timeZone)}</td>
+                                    <td>
+                                        <div class="table-actions">
+                                            <button class="btn btn-secondary btn-sm" onclick="openFeedbackDetail('${item.id}')">Open</button>
+                                            <button class="btn btn-danger btn-sm" onclick="deleteFeedbackItem('${item.id}')">Delete</button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            `).join('') || '<tr><td colspan="5">No feedback yet.</td></tr>'}
+                        </tbody>
+                    </table>
+                    <div class="mobile-record-list">
+                        ${adminState.items.map((item) => `
+                            <article class="record-card">
+                                <div class="record-card-top">
+                                    <h3>${DashboardUtils.escapeHtml(item.name)}</h3>
+                                    <div class="feedback-table-rating">${renderStarRating(item.rating)}</div>
+                                </div>
+                                <p>${DashboardUtils.escapeHtml(item.suggestion)}</p>
+                                <small>${DashboardUtils.formatDateTime(item.created_at, adminState.timeZone)}</small>
+                                <div class="record-card-actions">
+                                    <button class="btn btn-secondary btn-sm" onclick="openFeedbackDetail('${item.id}')">Open</button>
+                                    <button class="btn btn-danger btn-sm" onclick="deleteFeedbackItem('${item.id}')">Delete</button>
+                                </div>
+                            </article>
+                        `).join('') || '<div class="empty-state"><h3>No feedback yet</h3><p>Feedback from users will appear here.</p></div>'}
+                    </div>
+                </div>
+                <div class="pagination-bar">
+                    <button class="btn btn-secondary btn-sm" onclick="changePage(-1)" ${adminState.page === 1 ? 'disabled' : ''}>Previous</button>
+                    <span>Page ${adminState.page} of ${totalPages}</span>
+                    <button class="btn btn-secondary btn-sm" onclick="changePage(1)" ${adminState.page >= totalPages ? 'disabled' : ''}>Next</button>
+                </div>
+            </section>
+        `;
+    }).catch((error) => {
+        container.innerHTML = '<div class="panel-loading error">Could not load feedback. Check your connection or admin session.</div>';
+    });
+}
+
+function openFeedbackDetail(id) {
+    const item = adminState.items.find((entry) => entry.id === id);
+    if (!item) {
+        DashboardUtils.showToast('Feedback not found.', 'error');
+        return;
+    }
+
+    feedbackViewingId = id;
+    const body = document.getElementById('feedback-detail-body');
+    body.innerHTML = `
+        <div class="feedback-meta">
+            <div class="feedback-meta-row">
+                <span class="feedback-meta-label">Name</span>
+                <strong>${DashboardUtils.escapeHtml(item.name)}</strong>
+            </div>
+            <div class="feedback-meta-row">
+                <span class="feedback-meta-label">Rating</span>
+                ${renderStarRating(item.rating)}
+            </div>
+            <div class="feedback-meta-row">
+                <span class="feedback-meta-label">Sent</span>
+                <span>${DashboardUtils.formatDateTime(item.created_at, adminState.timeZone)}</span>
+            </div>
+            <div>
+                <span class="feedback-meta-label">Suggestion</span>
+                <p class="feedback-suggestion-text">${DashboardUtils.escapeHtml(item.suggestion)}</p>
+            </div>
+        </div>
+    `;
+    DashboardUtils.openModal('feedback-detail-modal');
+}
+
+async function deleteCurrentFeedback() {
+    if (!feedbackViewingId) {
+        return;
+    }
+    await deleteFeedbackItem(feedbackViewingId);
+    DashboardUtils.closeModal('feedback-detail-modal');
+    feedbackViewingId = null;
+}
+
+async function deleteFeedbackItem(id) {
+    const confirmed = await DashboardUtils.confirmAction('Delete this feedback?');
+    if (!confirmed) {
+        return;
+    }
+
+    const previousItems = [...adminState.items];
+    const removed = previousItems.find((item) => item.id === id);
+    adminState.items = adminState.items.filter((item) => item.id !== id);
+    adminState.total = Math.max(0, adminState.total - 1);
+
+    if (adminState.currentTab === 'feedback') {
+        const container = document.getElementById('tab-content');
+        if (container) {
+            renderFeedback(container);
+        }
+    }
+
+    try {
+        await DashboardData.deleteFeedback(id);
+        DashboardUtils.showToast('Feedback deleted.', 'success');
+    } catch (error) {
+        if (removed) {
+            adminState.items = previousItems;
+            adminState.total += 1;
+            if (adminState.currentTab === 'feedback') {
+                const container = document.getElementById('tab-content');
+                if (container) {
+                    renderFeedback(container);
+                }
+            }
+        }
+        DashboardUtils.showToast(error.message || 'Delete failed.', 'error');
+    }
 }
 
 function renderSettings(container) {
@@ -658,5 +832,9 @@ async function handleClearCloud() {
         DashboardUtils.showToast(error.message || 'Could not clear cloud content.', 'error');
     }
 }
+
+window.openFeedbackDetail = openFeedbackDetail;
+window.deleteCurrentFeedback = deleteCurrentFeedback;
+window.deleteFeedbackItem = deleteFeedbackItem;
 
 document.addEventListener('DOMContentLoaded', checkAuth);

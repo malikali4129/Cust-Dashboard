@@ -69,12 +69,12 @@
                 </div>
             </header>
 
-
             <div class="tabs">
                 <button class="tab active" data-tab="announcements" onclick="switchTab('announcements')">Announcements</button>
                 <button class="tab" data-tab="assignments" onclick="switchTab('assignments')">Assignments</button>
                 <button class="tab" data-tab="deadlines" onclick="switchTab('deadlines')">Deadlines</button>
                 <button class="tab" data-tab="quizzes" onclick="switchTab('quizzes')">Quizzes</button>
+                <button class="tab" data-tab="feedback" onclick="switchTab('feedback')">Feedback</button>
                 <button class="tab" data-tab="settings" onclick="switchTab('settings')">Settings</button>
             </div>
 
@@ -96,6 +96,25 @@
         </div>
     </div>
 
+    <div id="feedback-detail-modal" class="modal-overlay">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>Feedback Detail</h3>
+                <button class="modal-close" type="button" onclick="DashboardUtils.closeModal('feedback-detail-modal')">Close</button>
+            </div>
+            <div id="feedback-detail-body" class="modal-body"></div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" type="button" onclick="DashboardUtils.closeModal('feedback-detail-modal')">Close</button>
+                <button class="btn btn-danger" type="button" onclick="deleteCurrentFeedback()">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="config.js"></script>
+    <script src="data.js"></script>
+    <script src="script.js"></script>
+    <script src="admin.js"></script>
+</body>
     <script src="config.js"></script>
     <script src="data.js"></script>
     <script src="script.js"></script>
