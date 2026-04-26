@@ -379,7 +379,81 @@ document.addEventListener('DOMContentLoaded', () => {
     initModals();
     initConnectivity();
     registerServiceWorker();
+    initPwaInstall();
 });
+
+// ---------- PWA Install Banner ----------
+let PWA_DEFERRED_PROMPT = null;
+
+async function initPwaInstall() {
+    // Already installed — don't show banner
+    if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) {
+        return;
+    }
+
+    // Listen for the install prompt event
+    window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        PWA_DEFERRED_PROMPT = e;
+        showPwaBanner();
+    });
+
+    // When app is installed, hide the banner permanently
+    window.addEventListener('appinstalled', () => {
+        PWA_DEFERRED_PROMPT = null;
+        hidePwaBanner();
+    });
+}
+
+function showPwaBanner() {
+    const banner = document.getElementById('pwa-install-banner');
+    if (banner) {
+        banner.classList.add('is-visible');
+    }
+}
+
+function hidePwaBanner() {
+    const banner = document.getElementById('pwa-install-banner');
+    if (banner) {
+        banner.classList.remove('is-visible');
+    }
+}
+
+async function installPwa() {
+    if (!PWA_DEFERRED_PROMPT) {
+        // Fallback for browsers without beforeinstallprompt
+        if (window.matchMedia('(display-mode: standalone)').matches) {
+            DashboardUtils.showToast('App is already installed.', 'info');
+            return;
+        }
+        // Try opening the install prompt manually (works on some browsers)
+        const installURL = window.location.href;
+        DashboardUtils.showToast('To install: tap Share then "Add to Home Screen".', 'info');
+    } else {
+        PWA_DEFERRED_PROMPT.prompt();
+        const { outcome } = await PWA_DEFERRED_PROMPT.userChoice;
+
+        if (outcome === 'accepted') {
+            DashboardUtils.showToast('App installed!', 'success');
+        }
+        PWA_DEFERRED_PROMPT = null;
+    }
+    hidePwaBanner();
+}
+
+function dismissPwaBanner() {
+    // Just hide for this session — banner will reappear on next visit
+    hidePwaBanner();
+}
+
+function closePwaBanner() {
+    hidePwaBanner();
+}
+
+// Expose PWA functions globally
+window.installPwa = installPwa;
+window.dismissPwaBanner = dismissPwaBanner;
+window.closePwaBanner = closePwaBanner;
 
 window.DashboardUtils = {
     TIME_ZONE_LABEL,

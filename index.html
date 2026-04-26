@@ -25,6 +25,21 @@
         </div>
     </noscript>
 
+    <div id="pwa-install-banner" class="pwa-install-banner">
+        <button class="pwa-install-close" onclick="closePwaBanner()" aria-label="Close">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="4" y1="4" x2="12" y2="12"></line><line x1="12" y1="4" x2="4" y2="12"></line></svg>
+        </button>
+        <div class="pwa-install-banner-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+            <span>Install App</span>
+        </div>
+        <p>Add My Cust to your home screen for a native app experience with offline access.</p>
+        <div class="pwa-install-banner-actions">
+            <button class="btn btn-secondary" type="button" onclick="dismissPwaBanner()">Not now</button>
+            <button class="btn btn-primary" type="button" onclick="installPwa()">Install</button>
+        </div>
+    </div>
+
     <div class="app-shell">
         <button class="mobile-toggle" aria-label="Open navigation">Menu</button>
         <aside class="sidebar">
