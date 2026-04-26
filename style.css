@@ -1486,11 +1486,17 @@ svg {
     border: none;
   }
 
+  .desktop-table {
+    display: none;
+  }
+
   .data-table {
     display: block;
   }
 
   .data-table thead {
+
+
     display: none;
   }
 

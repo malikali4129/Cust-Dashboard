@@ -558,7 +558,7 @@ function normalizeFeedback(item) {
         name: item.name,
         suggestion: item.suggestion,
         rating: item.rating,
-        createdAt: item.created_at
+        created_at: item.created_at
     };
 }
 

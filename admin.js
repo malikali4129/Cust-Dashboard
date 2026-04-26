@@ -391,6 +391,7 @@ function renderRecords(container) {
                 <div class="mobile-record-list">
                     ${adminState.items.map(config.mobileCard).join('') || '<div class="empty-state"><h3>No results</h3><p>Try a different search or create a new record.</p></div>'}
                 </div>
+            </div>
             <div class="pagination-bar">
                 <button class="btn btn-secondary btn-sm" onclick="changePage(-1)" ${adminState.page === 1 ? 'disabled' : ''}>Previous</button>
                 <span>Page ${adminState.page} of ${totalPages}</span>
