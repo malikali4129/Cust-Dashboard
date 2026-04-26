@@ -1,6 +1,6 @@
 {
-  "name": "University Dashboard",
-  "short_name": "UniDash",
+  "name": "My Cust",
+  "short_name": "My Cust",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#0b0f19",
