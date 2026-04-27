@@ -337,10 +337,29 @@ svg {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 var(--space-4) 0 3.75rem;
+  padding: 0;
   padding-top: env(safe-area-inset-top);
   z-index: 100;
   transition: background var(--transition-base);
+}
+
+/* Header inner container to align content with main column */
+.dashboard-header .header-inner {
+  max-width: 1180px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--space-4);
+}
+
+/* When sidebar is present (admin) slightly offset header inner to align with sidebar */
+/* Remove empty rules above and rely on .header-inner for horizontal padding */
+
+.brand-lockup {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 [data-theme] .dashboard-header {
@@ -881,6 +900,36 @@ body.client-dashboard .mobile-toggle {
 
 body.client-dashboard .main-content {
   padding-left: var(--space-4);
+}
+
+/* When sidebar is removed, center and constrain content for better alignment */
+body.client-dashboard .app-shell {
+  justify-content: center;
+}
+
+body.client-dashboard .main-content {
+  /* keep header-space on top, but center page content */
+  padding: calc(var(--header-height) + var(--space-6)) var(--space-4) var(--space-8);
+  margin: 0 auto;
+  max-width: 1180px;
+  width: 100%;
+}
+
+body.client-dashboard .dashboard-header {
+  padding-left: var(--space-4);
+}
+
+/* Small screens: ensure full-bleed layout with normal insets */
+@media (max-width: 980px) {
+  body.client-dashboard .main-content {
+    padding-left: var(--space-4);
+    padding-right: var(--space-4);
+    max-width: 100%;
+  }
+  body.client-dashboard .dashboard-header {
+    padding-left: var(--space-4);
+    padding-right: var(--space-4);
+  }
 }
 
 .desktop-table {
