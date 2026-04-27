@@ -17,6 +17,22 @@ function toggleTheme() {
     updateThemeButton();
 }
 
+function toggleSettingsPopup() {
+    const popup = document.getElementById('settings-popup');
+    if (popup) popup.classList.toggle('active');
+}
+
+// Close popup when clicking outside
+document.addEventListener('click', function(e) {
+    const popup = document.getElementById('settings-popup');
+    const btn = document.querySelector('.settings-btn');
+    if (popup && popup.classList.contains('active')) {
+        if (!popup.contains(e.target) && (!btn || !btn.contains(e.target))) {
+            popup.classList.remove('active');
+        }
+    }
+});
+
 function updateThemeButton() {
     const isLight = document.documentElement.hasAttribute('data-theme');
     document.querySelectorAll('[data-theme-toggle-label]').forEach((element) => {

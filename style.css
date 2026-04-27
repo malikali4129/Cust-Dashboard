@@ -441,6 +441,7 @@ svg {
   align-items: center;
   gap: var(--space-3);
   flex-wrap: wrap;
+  position: relative;
 }
 
 .dashboard-header-meta .btn {
@@ -459,6 +460,78 @@ svg {
   border-radius: var(--radius-full);
   font-size: 0.8125rem;
   font-weight: 500;
+}
+
+/* Settings button */
+.settings-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.settings-btn:hover {
+  background: var(--bg-surface-hover);
+  border-color: var(--border-hover);
+  color: var(--text);
+}
+
+.settings-btn svg {
+  display: block;
+}
+
+/* Settings popup */
+.settings-popup {
+  position: absolute;
+  top: calc(100% + var(--space-2));
+  right: 0;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--space-2);
+  display: none;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 140px;
+  box-shadow: var(--shadow-lg);
+  z-index: 200;
+}
+
+.settings-popup.active {
+  display: flex;
+}
+
+.popup-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  text-align: left;
+}
+
+.popup-btn:hover {
+  background: var(--bg-surface);
+  color: var(--text);
+}
+
+.popup-btn svg {
+  flex-shrink: 0;
 }
 
 .header-meta-item:hover {
