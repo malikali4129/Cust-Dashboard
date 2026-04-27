@@ -37,6 +37,14 @@ function getLocalCacheData(key) {
     }
 }
 
+function clearLocalCache() {
+    try {
+        localStorage.removeItem(DATA_CACHE_KEY);
+    } catch (err) {
+        console.warn('[data] clearCache failed:', err.message);
+    }
+}
+
 function isSupabaseConfigured() {
     return typeof SUPABASE_CONFIG !== 'undefined' &&
         Boolean(SUPABASE_CONFIG.url) &&
@@ -827,6 +835,7 @@ async function importData(jsonString) {
 window.DashboardData = {
     DEFAULT_PAGE_SIZE,
     isSupabaseConfigured,
+    clearLocalCache,
     getSession,
     signInAdmin,
     signOutAdmin,

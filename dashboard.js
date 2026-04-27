@@ -190,6 +190,32 @@ function setServerLiveState(isLive) {
     }
 }
 
+async function refreshDashboard() {
+    // Cooldown check - 30 seconds
+    const now = Date.now();
+    const lastRefresh = window._lastRefreshTime || 0;
+    if (now - lastRefresh < 30000) {
+        const remaining = Math.ceil((30000 - (now - lastRefresh)) / 1000);
+        DashboardUtils.showToast(`Wait ${remaining}s before refreshing again`, 'warning');
+        return;
+    }
+    window._lastRefreshTime = now;
+
+    DashboardUtils.showToast('Refreshing data...', 'info');
+    // Clear cache and reload all data
+    DashboardData.clearLocalCache();
+    await updateMeta();
+    const statsResult = await DashboardData.getStats();
+    renderStats(statsResult);
+    setServerLiveState(true);
+    // Reload all sections
+    renderSection(renderAnnouncements, () => DashboardData.getAnnouncements({ limit: 5 }), 'announcements-list');
+    renderSection(renderAssignments, () => DashboardData.getAssignments({ limit: 4 }), 'assignments-list');
+    renderSection(renderDeadlines, () => DashboardData.getDeadlines({ limit: 5 }), 'deadlines-list');
+    renderSection(renderQuizzes, () => DashboardData.getQuizzes({ limit: 4 }), 'quizzes-list');
+    DashboardUtils.showToast('Data refreshed!', 'success');
+}
+
 async function openDetailModal(type, id) {
     const title = document.getElementById('detail-modal-title');
     const body = document.getElementById('detail-modal-body');
