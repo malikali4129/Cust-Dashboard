@@ -615,7 +615,7 @@ function renderSettings(container) {
 }
 
 async function renderSettingsContent(container, perms) {
-    const roleLabels = { 1: 'Viewer', 2: 'Editor', 3: 'Superadmin' };
+    const roleLabels = { 1: 'Superadmin', 2: 'Editor', 3: 'Viewer' };
     const statusBadge = perms.isActive
         ? '<span class="badge badge-normal">Active</span>'
         : '<span class="badge badge-high">Inactive</span>';

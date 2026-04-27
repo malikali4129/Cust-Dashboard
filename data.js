@@ -430,9 +430,9 @@ async function getCurrentAdminUser() {
 
 // Permission check constants
 const USER_ROLES = {
-    VIEWER: 1,
+    SUPERADMIN: 1,
     EDITOR: 2,
-    SUPERADMIN: 3
+    VIEWER: 3
 };
 
 // Cooldown tracking
@@ -482,7 +482,7 @@ async function checkUserPermissions() {
                     role: role,
                     status: admin.status,
                     isActive: isActive,
-                    canEdit: role >= USER_ROLES.EDITOR && isActive,
+                    canEdit: role <= USER_ROLES.EDITOR && isActive,
                     email: email
                 };
             }

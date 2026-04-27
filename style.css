@@ -2018,8 +2018,8 @@ body.client-dashboard .dashboard-header {
 }
 
 .role-badge.role-1 {
-  background: var(--soft);
-  color: var(--text-secondary);
+  background: var(--secondary-soft);
+  color: var(--secondary);
 }
 
 .role-badge.role-2 {
@@ -2028,8 +2028,8 @@ body.client-dashboard .dashboard-header {
 }
 
 .role-badge.role-3 {
-  background: var(--secondary-soft);
-  color: var(--secondary);
+  background: var(--soft);
+  color: var(--text-secondary);
 }
 
 .admin-user-actions {
