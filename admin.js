@@ -304,6 +304,7 @@ async function handleLogin(event) {
 
     try {
         await DashboardData.signInAdmin(email, password);
+        await DashboardData.logAction('admin_login', { email: email });
         DashboardUtils.showToast('Admin session started.', 'success');
         showDashboard();
     } catch (error) {
@@ -312,6 +313,10 @@ async function handleLogin(event) {
 }
 
 async function handleLogout() {
+    const perms = await DashboardData.checkUserPermissions();
+    if (perms.email) {
+        await DashboardData.logAction('admin_logout', { email: perms.email });
+    }
     await DashboardData.signOutAdmin();
     window.location.reload();
 }
@@ -349,6 +354,11 @@ async function renderCurrentTab() {
 
     if (adminState.currentTab === 'feedback') {
         renderFeedback(container);
+        return;
+    }
+
+    if (adminState.currentTab === 'logs') {
+        renderLogs(container);
         return;
     }
 
@@ -640,19 +650,23 @@ async function renderSettingsContent(container, perms) {
                                 <div class="admin-user-info">
                                     <strong>${DashboardUtils.escapeHtml(u.email)}</strong>
                                     <span class="role-badge role-${u.role}">${roleLabels[u.role] || 'Viewer'}</span>
+                                    ${u.role === 1 ? '<span class="badge badge-normal">Always Active</span>' : ''}
                                     ${u.email === perms.email ? '<span class="badge badge-normal">You</span>' : ''}
                                 </div>
                                 <div class="admin-user-actions">
+                                    ${u.role !== 1 ? `
                                     <select class="form-select form-select-sm" onchange="handleUserStatusChange('${u.id}', this.value)" style="width: auto;">
                                         <option value="active" ${u.status === 'active' ? 'selected' : ''}>Active</option>
                                         <option value="inactive" ${u.status === 'inactive' ? 'selected' : ''}>Inactive</option>
                                     </select>
+                                    ` : ''}
                                     ${u.email !== perms.email ? `
                                         <select class="form-select form-select-sm" onchange="handleUserRoleChange('${u.id}', this.value)" style="width: auto;">
-                                            <option value="1" ${u.role === 1 ? 'selected' : ''}>Viewer</option>
+                                            <option value="3" ${u.role === 3 ? 'selected' : ''}>Viewer</option>
                                             <option value="2" ${u.role === 2 ? 'selected' : ''}>Editor</option>
-                                            <option value="3" ${u.role === 3 ? 'selected' : ''}>Superadmin</option>
+                                            <option value="1" ${u.role === 1 ? 'selected' : ''}>Superadmin</option>
                                         </select>
+                                        <button class="btn btn-danger btn-sm" onclick="handleDeleteUser('${u.id}')" style="padding: 2px 8px; font-size: 0.75rem;">Delete</button>
                                     ` : ''}
                                 </div>
                             </div>
@@ -680,12 +694,23 @@ async function renderSettingsContent(container, perms) {
                 </div>
             </div>
             <div class="danger-actions">
-                <label class="btn btn-secondary file-trigger">
-                    Import/Export Data
-                    <input type="file" accept=".json" onchange="handleImport(event)" style="display: none;">
-                </label>
+                <button class="btn btn-secondary" onclick="openDataModal()">Import/Export</button>
                 <button class="btn btn-danger" onclick="handleClearCloud()">Clear Data</button>
             </div>
+        </section>
+    ` : '';
+
+    // Show logs button only for superadmin
+    const logsButton = showDbOps ? `
+        <section class="panel">
+            <div class="panel-header">
+                <div>
+                    <p class="eyebrow">System</p>
+                    <h2>Activity Logs</h2>
+                </div>
+            </div>
+            <p>View comprehensive activity logs of all admin actions.</p>
+            <button class="btn btn-primary" onclick="switchTab('logs')">Open Logs</button>
         </section>
     ` : '';
 
@@ -720,9 +745,253 @@ async function renderSettingsContent(container, perms) {
             </section>
             ${usersListHtml}
             ${dbOpsHtml}
+            ${logsButton}
         </div>
     `;
 }
+
+// ==================== LOGS PAGE ====================
+
+let logFilters = {
+    email: '',
+    action: '',
+    startDate: '',
+    endDate: '',
+    viewMode: 'standard' // 'standard' or 'comprehensive'
+};
+
+async function renderLogs(container) {
+    const stats = await DashboardData.getLogStats();
+    const actions = await DashboardData.getLogActions();
+
+    container.innerHTML = `
+        <div class="logs-page">
+            <div class="logs-header">
+                <div class="logs-stats">
+                    <div class="stat-card">
+                        <span class="stat-value">${stats.todayCount}</span>
+                        <span class="stat-label">Today's Actions</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-value">${stats.uniqueUsers}</span>
+                        <span class="stat-label">Total Users</span>
+                    </div>
+                </div>
+                <div class="logs-view-toggle">
+                    <button class="view-toggle-btn ${logFilters.viewMode === 'standard' ? 'active' : ''}" onclick="setLogViewMode('standard')">
+                        <span class="toggle-icon">▬</span> Standard
+                    </button>
+                    <button class="view-toggle-btn ${logFilters.viewMode === 'comprehensive' ? 'active' : ''}" onclick="setLogViewMode('comprehensive')">
+                        <span class="toggle-icon">◉</span> Comprehensive
+                    </button>
+                </div>
+            </div>
+
+            <div class="logs-filters">
+                <input type="text" class="form-input" placeholder="Search by email..."
+                    value="${DashboardUtils.escapeHtml(logFilters.email)}"
+                    oninput="debouncedLogSearch(this.value)">
+
+                <select class="form-select" onchange="filterLogAction(this.value)">
+                    <option value="">All Actions</option>
+                    ${actions.map(a => `<option value="${a}" ${logFilters.action === a ? 'selected' : ''}>${a}</option>`).join('')}
+                </select>
+
+                <input type="date" class="form-input" value="${logFilters.startDate}"
+                    onchange="filterLogDate('start', this.value)" placeholder="Start Date">
+
+                <input type="date" class="form-input" value="${logFilters.endDate}"
+                    onchange="filterLogDate('end', this.value)" placeholder="End Date">
+
+                <button class="btn btn-secondary" onclick="clearLogFilters()">Clear</button>
+            </div>
+
+            <div class="logs-list" id="logs-list">
+                <div class="panel-loading">Loading logs...</div>
+            </div>
+
+            <div class="logs-pagination" id="logs-pagination"></div>
+        </div>
+    `;
+
+    await loadLogs();
+}
+
+function setLogViewMode(mode) {
+    logFilters.viewMode = mode;
+    renderLogs(document.getElementById('tab-content'));
+}
+
+function debouncedLogSearch(value) {
+    clearTimeout(window.logSearchTimeout);
+    window.logSearchTimeout = setTimeout(() => {
+        logFilters.email = value;
+        loadLogs();
+    }, 300);
+}
+
+function filterLogAction(value) {
+    logFilters.action = value;
+    loadLogs();
+}
+
+function filterLogDate(type, value) {
+    if (type === 'start') {
+        logFilters.startDate = value;
+    } else {
+        logFilters.endDate = value;
+    }
+    loadLogs();
+}
+
+function clearLogFilters() {
+    logFilters = {
+        email: '',
+        action: '',
+        startDate: '',
+        endDate: '',
+        viewMode: logFilters.viewMode
+    };
+    renderLogs(document.getElementById('tab-content'));
+}
+
+async function loadLogs(page = 1) {
+    const listEl = document.getElementById('logs-list');
+    if (!listEl) return;
+
+    try {
+        const result = await DashboardData.getLogs({
+            page: page,
+            pageSize: 30,
+            email: logFilters.email,
+            action: logFilters.action,
+            startDate: logFilters.startDate,
+            endDate: logFilters.endDate
+        });
+
+        if (result.logs.length === 0) {
+            listEl.innerHTML = '<div class="logs-empty">No logs found.</div>';
+            return;
+        }
+
+        if (logFilters.viewMode === 'standard') {
+            listEl.innerHTML = result.logs.map(log => `
+                <div class="log-entry log-standard">
+                    <div class="log-email">${DashboardUtils.escapeHtml(log.email)}</div>
+                    <div class="log-action">${getActionIcon(log.action)} ${formatAction(log.action)}</div>
+                    <div class="log-time">${formatLogTime(log.created_at)}</div>
+                </div>
+            `).join('');
+        } else {
+            listEl.innerHTML = result.logs.map(log => `
+                <div class="log-entry log-comprehensive">
+                    <div class="log-header">
+                        <span class="log-email-badge">${getColorForEmail(log.email)}</span>
+                        <span class="log-email">${DashboardUtils.escapeHtml(log.email)}</span>
+                        <span class="log-action-badge">${getActionIcon(log.action)} ${formatAction(log.action)}</span>
+                    </div>
+                    <div class="log-details">
+                        <div class="detail-row">
+                            <span class="detail-label">Action Type</span>
+                            <span class="detail-value">${log.action}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Details</span>
+                            <span class="detail-value">${formatDetails(log.details)}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Timestamp</span>
+                            <span class="detail-value">${new Date(log.created_at).toLocaleString('en-PK', { timeZone: 'Asia/Karachi' })}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">User Agent</span>
+                            <span class="detail-value log-user-agent">${log.user_agent ? DashboardUtils.escapeHtml(log.user_agent.substring(0, 60)) + '...' : 'N/A'}</span>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Render pagination
+        const totalPages = Math.ceil(result.total / 30);
+        if (totalPages > 1) {
+            const paginationHtml = `
+                <button class="btn btn-secondary" ${page <= 1 ? 'disabled' : ''} onclick="loadLogs(${page - 1})">Previous</button>
+                <span class="page-info">Page ${page} of ${totalPages}</span>
+                <button class="btn btn-secondary" ${page >= totalPages ? 'disabled' : ''} onclick="loadLogs(${page + 1})">Next</button>
+            `;
+            const pagEl = document.getElementById('logs-pagination');
+            if (pagEl) pagEl.innerHTML = paginationHtml;
+        }
+    } catch (error) {
+        listEl.innerHTML = '<div class="logs-empty error">Could not load logs.</div>';
+    }
+}
+
+function getActionIcon(action) {
+    if (action?.includes('create') || action?.includes('add')) return '➕';
+    if (action?.includes('update') || action?.includes('edit')) return '✏️';
+    if (action?.includes('delete') || action?.includes('remove')) return '🗑️';
+    if (action?.includes('login') || action?.includes('signin')) return '🔑';
+    if (action?.includes('logout')) return '🚪';
+    if (action?.includes('import')) return '📥';
+    if (action?.includes('export')) return '📤';
+    return '📋';
+}
+
+function formatAction(action) {
+    if (!action) return 'Unknown';
+    return action.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+}
+
+function formatLogTime(timestamp) {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diff = now - date;
+
+    if (diff < 60000) return 'Just now';
+    if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
+    if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
+    if (diff < 604800000) return `${Math.floor(diff / 86400000)}d ago`;
+
+    return date.toLocaleDateString('en-PK', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function formatDetails(details) {
+    if (!details) return 'None';
+    if (typeof details === 'string') return details;
+    try {
+        return JSON.stringify(details);
+    } catch {
+        return String(details);
+    }
+}
+
+// Color generator for email
+function getColorForEmail(email) {
+    const colors = [
+        '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7',
+        '#DDA0DD', '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E9',
+        '#F8B500', '#00CED1', '#FF69B4', '#32CD32', '#FF4500'
+    ];
+
+    let hash = 0;
+    for (let i = 0; i < email?.length; i++) {
+        hash = email.charCodeAt(i) + ((hash << 5) - hash);
+    }
+
+    // Get first letter uppercase
+    const letter = email?.charAt(0).toUpperCase() || '?';
+
+    return `<span class="email-avatar" style="background: ${colors[Math.abs(hash) % colors.length]}">${letter}</span>`;
+}
+
+// Expose functions globally
+window.setLogViewMode = setLogViewMode;
+window.filterLogAction = filterLogAction;
+window.filterLogDate = filterLogDate;
+window.clearLogFilters = clearLogFilters;
+window.loadLogs = loadLogs;
 
 // Add modal HTML to admin.html
 function openPasswordModal() {
@@ -802,9 +1071,9 @@ function openAddUserModal() {
                         <label class="field">
                             <span>Role</span>
                             <select class="form-select" id="new-user-role">
-                                <option value="1">Viewer</option>
+                                <option value="3">Viewer</option>
                                 <option value="2">Editor</option>
-                                <option value="3">Superadmin</option>
+                                <option value="1">Superadmin</option>
                             </select>
                         </label>
                     </form>
@@ -866,6 +1135,19 @@ async function handleUserRoleChange(userId, newRole) {
     }
 }
 
+async function handleDeleteUser(userId) {
+    const confirmed = await DashboardUtils.confirmAction('Delete this user?');
+    if (!confirmed) return;
+
+    try {
+        await DashboardData.deleteAdminUser(userId);
+        DashboardUtils.showToast('User deleted.', 'success');
+        renderSettings(document.getElementById('tab-content'));
+    } catch (error) {
+        DashboardUtils.showToast(error.message || 'Could not delete user.', 'error');
+    }
+}
+
 // Expose functions globally
 window.openPasswordModal = openPasswordModal;
 window.submitPasswordChange = submitPasswordChange;
@@ -873,6 +1155,77 @@ window.openAddUserModal = openAddUserModal;
 window.submitAddUser = submitAddUser;
 window.handleUserStatusChange = handleUserStatusChange;
 window.handleUserRoleChange = handleUserRoleChange;
+window.handleDeleteUser = handleDeleteUser;
+
+// Import/Export Data Modal
+function openDataModal() {
+    const modalHtml = `
+        <div id="data-modal" class="modal-overlay" onclick="if(event.target === this) DashboardUtils.closeModal('data-modal')">
+            <div class="modal">
+                <div class="modal-header">
+                    <h3>Import / Export Data</h3>
+                    <button class="modal-close" type="button" onclick="DashboardUtils.closeModal('data-modal')">Close</button>
+                </div>
+                <div class="modal-body" style="text-align: center; padding: var(--space-6);">
+                    <div style="display: flex; gap: var(--space-4); justify-content: center; flex-wrap: wrap;">
+                        <div style="text-align: center;">
+                            <button class="btn btn-primary" onclick="handleDataExport()" style="margin-bottom: var(--space-2);">
+                                Export Data
+                            </button>
+                            <p style="color: var(--text-secondary); font-size: 0.8125rem;">Download all dashboard data as JSON</p>
+                        </div>
+                        <div style="text-align: center;">
+                            <label class="btn btn-secondary" style="margin-bottom: var(--space-2); display: inline-block;">
+                                Import Data
+                                <input type="file" accept=".json" onchange="handleDataImport(event)" style="display: none;">
+                            </label>
+                            <p style="color: var(--text-secondary); font-size: 0.8125rem;">Upload JSON backup file</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" type="button" onclick="DashboardUtils.closeModal('data-modal')">Close</button>
+                </div>
+            </div>
+        </div>
+    `;
+
+    const existing = document.getElementById('data-modal');
+    if (existing) existing.remove();
+
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    DashboardUtils.openModal('data-modal');
+}
+
+function handleDataExport() {
+    DashboardUtils.closeModal('data-modal');
+    DashboardData.exportData();
+}
+
+async function handleDataImport(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    DashboardUtils.closeModal('data-modal');
+
+    const perms = await DashboardData.checkActionPermission();
+    if (!perms.allowed) {
+        DashboardUtils.showToast(perms.message, 'error');
+        return;
+    }
+
+    try {
+        const content = await DashboardUtils.readFile(file);
+        await DashboardData.importData(content);
+        DashboardUtils.showToast('Data imported successfully.', 'success');
+    } catch (error) {
+        DashboardUtils.showToast(error.message || 'Import failed.', 'error');
+    } finally {
+        event.target.value = '';
+    }
+}
+
+window.openDataModal = openDataModal;
 
 function changePage(delta) {
     adminState.page = Math.max(1, adminState.page + delta);

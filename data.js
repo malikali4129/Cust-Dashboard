@@ -127,10 +127,8 @@ async function request(path, options = {}, retry = true) {
 
     const response = await fetch(`${SUPABASE_CONFIG.url}${path}`, options);
     console.debug(`[DashboardData] ${options.method || 'GET'} ${path} → ${response.status}`);
-    if (!response.ok) {
-        const body = await response.text().catch(() => '');
-        console.error(`[DashboardData] HTTP ${response.status} on ${path}:`, body.slice(0, 200));
-    }
+
+    // Handle 401 retry
     if (response.status === 401 && retry && options.headers?.Authorization?.startsWith('Bearer ')) {
         try {
             await refreshAdminSession();
@@ -340,11 +338,15 @@ async function createRow(table, payload, { auth = true } = {}) {
         body: JSON.stringify(payload)
     });
 
+    const result = await response.json();
+
     if (!response.ok) {
         throw new Error(`Could not create ${table} (${response.status}).`);
     }
 
-    return response.json();
+    // Log the action
+    logAction(`create_${table}`, { id: result[0]?.id, data: payload });
+    return result;
 }
 
 async function updateRow(table, id, payload) {
@@ -357,11 +359,14 @@ async function updateRow(table, id, payload) {
         body: JSON.stringify(payload)
     });
 
+    const result = await response.json();
+
     if (!response.ok) {
         throw new Error(`Could not update ${table} (${response.status}).`);
     }
 
-    return response.json();
+    logAction(`update_${table}`, { id: id, data: payload });
+    return result;
 }
 
 async function deleteRow(table, id) {
@@ -373,6 +378,8 @@ async function deleteRow(table, id) {
     if (!response.ok) {
         throw new Error(`Could not delete ${table} (${response.status}).`);
     }
+
+    logAction(`delete_${table}`, { id: id });
 }
 
 async function touchSettings(partial = {}) {
@@ -833,15 +840,18 @@ async function addAdminUser(email, role, status = 'active') {
         })
     });
 
+    const result = await response.json();
+
     if (!response.ok) {
-        const errorText = await response.text();
-        if (errorText.includes('duplicate')) {
+        const errorText = JSON.stringify(result);
+        if (errorText.includes('duplicate') || errorText.includes('unique')) {
             throw new Error('User already exists.');
         }
         throw new Error('Could not add admin user.');
     }
 
-    return response.json();
+    await logAction('add_admin_user', { targetEmail: email, role: role, status: status });
+    return result;
 }
 
 async function updateAdminUser(id, updates) {
@@ -854,11 +864,14 @@ async function updateAdminUser(id, updates) {
         body: JSON.stringify(updates)
     });
 
+    const result = await response.json();
+
     if (!response.ok) {
         throw new Error('Could not update admin user.');
     }
 
-    return response.json();
+    await logAction('update_admin_user', { userId: id, changes: updates });
+    return result;
 }
 
 async function deleteAdminUser(id) {
@@ -869,6 +882,159 @@ async function deleteAdminUser(id) {
 
     if (!response.ok) {
         throw new Error('Could not delete admin user.');
+    }
+}
+
+// ==================== LOGGING SYSTEM ====================
+
+// Log an action
+async function logAction(action, details = {}) {
+    try {
+        // Get current user info for logging
+        let email = 'unknown';
+        try {
+            const session = getSession();
+            if (session?.user?.email) {
+                email = session.user.email;
+            }
+        } catch {}
+
+        const logEntry = {
+            email: email,
+            action: action,
+            details: details,
+            ip_address: null,
+            user_agent: navigator.userAgent
+        };
+
+        console.log('[logAction] Logging:', logEntry);
+
+        const response = await request('/rest/v1/logs', {
+            method: 'POST',
+            headers: buildHeaders({
+                auth: true,
+                extra: { Prefer: 'return=representation' }
+            }),
+            body: JSON.stringify(logEntry)
+        });
+
+        if (!response.ok) {
+            const errText = await response.text();
+            console.error('[logAction] Failed to log:', response.status, errText);
+        } else {
+            console.log('[logAction] Log created successfully');
+        }
+    } catch (err) {
+        console.error('[logAction] Failed to log:', err.message);
+    }
+}
+
+// Get logs with filters
+async function getLogs({ page = 1, pageSize = 30, email = '', action = '', startDate = '', endDate = '' } = {}) {
+    let url = '/rest/v1/logs?order=created_at.desc&limit=' + pageSize;
+
+    const offset = (page - 1) * pageSize;
+    url += '&offset=' + offset;
+
+    if (email) {
+        url += '&email=ilike.*' + encodeURIComponent(email) + '*';
+    }
+    if (action) {
+        url += '&action=ilike.*' + encodeURIComponent(action) + '*';
+    }
+    if (startDate) {
+        url += '&created_at=gte.' + encodeURIComponent(startDate);
+    }
+    if (endDate) {
+        // Add one day to include the full end date
+        url += '&created_at=lte.' + encodeURIComponent(endDate + 'T23:59:59');
+    }
+
+    try {
+        const response = await request(url, {
+            method: 'GET',
+            headers: buildHeaders({ auth: true })
+        });
+
+        if (!response.ok) {
+            console.error('[getLogs] Response not OK:', response.status);
+            return { logs: [], total: 0, page, pageSize };
+        }
+
+        const logs = await response.json();
+        console.log('[getLogs] Got logs:', logs.length, logs);
+
+        return {
+            logs: logs || [],
+            total: logs?.length || 0,
+            page: page,
+            pageSize: pageSize
+        };
+    } catch (err) {
+        console.error('[getLogs] Error:', err);
+        return { logs: [], total: 0, page, pageSize };
+    }
+}
+
+// Get log statistics
+async function getLogStats() {
+    try {
+        const now = new Date().toISOString();
+        const today = now.split('T')[0];
+
+        // Get today's logs count
+        const todayResponse = await request('/rest/v1/logs?created_at=gte.' + encodeURIComponent(today), {
+            method: 'GET',
+            headers: buildHeaders({ auth: true })
+        });
+
+        let todayCount = 0;
+        if (todayResponse.ok) {
+            const todayLogs = await todayResponse.json();
+            todayCount = todayLogs?.length || 0;
+        }
+
+        // Get unique users count
+        const usersResponse = await request('/rest/v1/logs?select=email&limit=1000', {
+            method: 'GET',
+            headers: buildHeaders({ auth: true })
+        });
+
+        const uniqueUsers = new Set();
+        if (usersResponse.ok) {
+            const allLogs = await usersResponse.json();
+            if (allLogs) {
+                allLogs.forEach(log => uniqueUsers.add(log.email));
+            }
+        }
+
+        return {
+            todayCount: todayCount,
+            uniqueUsers: uniqueUsers.size
+        };
+    } catch (err) {
+        console.error('[getLogStats] Error:', err);
+        return { todayCount: 0, uniqueUsers: 0 };
+    }
+}
+
+// Get unique actions for filter dropdown
+async function getLogActions() {
+    try {
+        const response = await request('/rest/v1/logs?select=action&limit=1000', {
+            method: 'GET',
+            headers: buildHeaders({ auth: true })
+        });
+
+        if (!response.ok) return [];
+
+        const logs = await response.json();
+        if (!logs) return [];
+        const actions = [...new Set(logs.map(l => l.action))];
+        return actions.sort();
+    } catch (err) {
+        console.error('[getLogActions] Error:', err);
+        return [];
     }
 }
 
@@ -1060,5 +1226,9 @@ window.DashboardData = {
     getAdminUsers,
     addAdminUser,
     updateAdminUser,
-    deleteAdminUser
+    deleteAdminUser,
+    logAction,
+    getLogs,
+    getLogStats,
+    getLogActions
 };
