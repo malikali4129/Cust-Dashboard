@@ -1712,6 +1712,51 @@ body.client-dashboard .dashboard-header {
   display: block;
 }
 
+/* ---------- Banned Screen ---------- */
+.banned-screen {
+  position: fixed;
+  inset: 0;
+  background: var(--bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: var(--space-4);
+}
+
+.banned-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: var(--space-8);
+  text-align: center;
+  max-width: 400px;
+  width: 100%;
+}
+
+.banned-icon {
+  width: 64px;
+  height: 64px;
+  margin: 0 auto var(--space-4);
+  color: var(--danger);
+}
+
+.banned-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.banned-card h1 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: var(--space-2);
+}
+
+.banned-message {
+  color: var(--text-secondary);
+  margin-bottom: var(--space-6);
+}
+
 /* ---------- PWA Install Banner ---------- */
 .pwa-install-banner {
   position: fixed;

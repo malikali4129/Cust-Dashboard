@@ -284,13 +284,89 @@ function currentConfig() {
 function showDashboard() {
     document.getElementById('login-screen')?.classList.add('hidden');
     document.getElementById('admin-dashboard')?.classList.remove('hidden');
+    // Start the user status polling
+    startUserStatusPolling();
     renderCurrentTab();
 }
 
+let userStatusInterval = null;
+
+// Start polling for user status every 15 seconds
+function startUserStatusPolling() {
+    // Check immediately first
+    checkUserStatus();
+
+    // Then check every 15 seconds
+    if (userStatusInterval) {
+        clearInterval(userStatusInterval);
+    }
+    userStatusInterval = setInterval(checkUserStatus, 15000);
+}
+
+// Stop the polling
+function stopUserStatusPolling() {
+    if (userStatusInterval) {
+        clearInterval(userStatusInterval);
+        userStatusInterval = null;
+    }
+}
+
+// Check user status - if banned/deleted, show error screen
+async function checkUserStatus() {
+    const status = await DashboardData.checkUserStatus();
+
+    if (!status.isValid) {
+        // Stop the polling since user is no longer valid
+        stopUserStatusPolling();
+
+        // Clear the session
+        await DashboardData.signOutAdmin();
+
+        // Show the banned screen
+        showBannedScreen(status.reason);
+    }
+}
+
+// Show the banned/deleted screen
+function showBannedScreen(reason) {
+    const bannedScreen = document.getElementById('banned-screen');
+    const adminDashboard = document.getElementById('admin-dashboard');
+    const loginScreen = document.getElementById('login-screen');
+
+    // Hide other screens
+    adminDashboard?.classList.add('hidden');
+    loginScreen?.classList.add('hidden');
+
+    // Update message based on reason
+    const messageEl = document.querySelector('.banned-message');
+    const headingEl = bannedScreen?.querySelector('h1');
+
+    if (messageEl) {
+        if (reason === 'banned') {
+            messageEl.textContent = 'Your admin account has been banned. You can no longer manage the dashboard.';
+        } else if (reason === 'deleted') {
+            messageEl.textContent = 'Your admin account has been deleted. You can no longer manage the dashboard.';
+        } else if (reason === 'unauthorized' || reason === 'session_revoked') {
+            messageEl.textContent = 'Your admin access has been revoked. You can no longer manage the dashboard.';
+        } else if (reason === 'not_logged_in') {
+            messageEl.textContent = 'Your session has expired. Please log in again.';
+        } else {
+            messageEl.textContent = 'Your admin access has been revoked. You can no longer manage the dashboard.';
+        }
+    }
+
+    // Show banned screen
+    bannedScreen?.classList.remove('hidden');
+}
+
+// Check auth status on page load
 async function checkAuth() {
-    const user = await DashboardData.getCurrentAdminUser();
-    if (user) {
+    const status = await DashboardData.checkUserStatus();
+    if (status.isValid) {
         showDashboard();
+    } else if (status.reason !== 'not_logged_in' && status.reason !== 'connection_error') {
+        // User was logged in but is now banned/deleted - show error screen
+        showBannedScreen(status.reason);
     }
 }
 
@@ -309,6 +385,7 @@ async function handleLogin(event) {
 }
 
 async function handleLogout() {
+    stopUserStatusPolling();
     await DashboardData.signOutAdmin();
     window.location.reload();
 }

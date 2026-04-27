@@ -428,6 +428,57 @@ async function getCurrentAdminUser() {
     return response.json();
 }
 
+// Check if user is banned or deleted by validating the session
+// Returns { isValid: boolean, reason: string }
+async function checkUserStatus() {
+    const session = getSession();
+    if (!session?.access_token) {
+        return { isValid: false, reason: 'not_logged_in' };
+    }
+
+    try {
+        // Try to get user info - if banned/deleted, this will fail with 401 or return error
+        const response = await request('/auth/v1/user', {
+            headers: buildHeaders({ auth: true }),
+            method: 'GET'
+        }, false);
+
+        if (!response.ok) {
+            // Try to parse error response for specific banned message
+            const errorText = await response.text().catch(() => '');
+            let reason = 'session_invalid';
+
+            // Check if response indicates banned/deleted user
+            if (response.status === 401 || response.status === 403) {
+                try {
+                    const errorJson = JSON.parse(errorText);
+                    if (errorJson.msg && errorJson.msg.toLowerCase().includes('ban')) {
+                        reason = 'banned';
+                    } else if (errorJson.msg && errorJson.msg.toLowerCase().includes('delete')) {
+                        reason = 'deleted';
+                    } else if (errorJson.msg) {
+                        reason = 'session_revoked';
+                    }
+                } catch {
+                    // Not JSON, use status-based reason
+                    if (response.status === 401) {
+                        reason = 'unauthorized';
+                    }
+                }
+            }
+
+            return { isValid: false, reason };
+        }
+
+        // User is valid
+        return { isValid: true, reason: null };
+    } catch (error) {
+        // Network or other error
+        console.warn('[checkUserStatus] Error:', error.message);
+        return { isValid: false, reason: 'connection_error' };
+    }
+}
+
 async function updatePassword(currentPassword, nextPassword) {
     const user = await getCurrentAdminUser();
     if (!user?.email) {
@@ -840,6 +891,7 @@ window.DashboardData = {
     signInAdmin,
     signOutAdmin,
     getCurrentAdminUser,
+    checkUserStatus,
     updatePassword,
     getSettings,
     updateSettings,
