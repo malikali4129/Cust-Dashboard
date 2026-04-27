@@ -38,14 +38,14 @@ self.addEventListener('install', (event) => {
     );
 });
 
-// Listen for server commands to force refresh
+// Listen for server commands to force logout all users
 self.addEventListener('message', (event) => {
-    if (event.data?.type === 'FORCE_REFRESH') {
-        console.log('[SW] Force refresh triggered from server');
-        // Tell all clients to reload
+    if (event.data?.type === 'FORCE_LOGOUT') {
+        console.log('[SW] Force logout triggered from server');
+        // Tell all clients to logout and reload (require re-login)
         self.clients.matchAll().then((clients) => {
             clients.forEach((client) => {
-                client.postMessage({ type: 'RELOAD_NOW' });
+                client.postMessage({ type: 'FORCE_LOGOUT' });
             });
         });
         // Immediately skip waiting to activate new SW
