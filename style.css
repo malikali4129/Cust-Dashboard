@@ -110,6 +110,7 @@ html {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overflow-x: hidden;
+  padding-top: env(safe-area-inset-top, 0px);
 }
 
 body {
@@ -279,7 +280,7 @@ svg {
 /* ---------- Mobile Toggle ---------- */
 .mobile-toggle {
   position: fixed;
-  top: var(--space-3);
+  top: calc(var(--space-3) + env(safe-area-inset-top, 0px));
   left: var(--space-3);
   z-index: 60;
   display: flex;
@@ -314,7 +315,7 @@ svg {
 /* ---------- Main Content ---------- */
 .main-content {
   flex: 1;
-  padding: calc(var(--header-height) + var(--space-6)) var(--space-4) var(--space-8);
+  padding: calc(var(--header-height) + var(--space-6) + env(safe-area-inset-top, 0px)) var(--space-4) var(--space-8);
   min-height: 100vh;
   max-width: 100%;
   overflow-x: hidden;
@@ -394,7 +395,7 @@ svg {
   top: 0;
   left: 0;
   right: 0;
-  height: var(--header-height);
+  height: calc(var(--header-height) + env(safe-area-inset-top, 0px));
   background: rgba(11, 15, 25, 0.85);
   backdrop-filter: blur(12px) saturate(180%);
   -webkit-backdrop-filter: blur(12px) saturate(180%);
@@ -403,7 +404,7 @@ svg {
   align-items: center;
   justify-content: space-between;
   padding: 0;
-  padding-top: env(safe-area-inset-top);
+  padding-top: env(safe-area-inset-top, 0px);
   z-index: 100;
   transition: background var(--transition-base);
 }
@@ -542,18 +543,25 @@ svg {
 }
 
 .server-dot {
-
+  display: inline-block;
   width: 8px;
   height: 8px;
   border-radius: 50%;
   background: var(--danger);
   box-shadow: 0 0 0 3px var(--danger-soft);
   transition: all var(--transition-base);
+  animation: pulse-dot 1.5s ease-in-out infinite;
 }
 
 .server-dot.live {
   background: var(--success);
   box-shadow: 0 0 0 3px var(--success-soft);
+  animation: none;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
 }
 
 .meta-label {
@@ -1049,12 +1057,12 @@ body.client-dashboard .main-content {
 
 /* When sidebar is removed, center and constrain content for better alignment */
 body.client-dashboard .app-shell {
-  justify-content: center;
+  justify-content: flex-start;
 }
 
 body.client-dashboard .main-content {
-  /* keep header-space on top, but center page content */
-  padding: calc(var(--header-height) + var(--space-6)) var(--space-4) var(--space-8);
+  /* keep header-space on top, starts from very top */
+  padding: calc(var(--header-height) + env(safe-area-inset-top, 20px) + var(--space-6)) var(--space-4) var(--space-8);
   margin: 0 auto;
   max-width: 1180px;
   width: 100%;
@@ -1964,11 +1972,11 @@ body.client-dashboard .dashboard-header {
   .admin-main {
     max-width: 100%;
     overflow-x: hidden;
-    padding-left: var(--space-3) !important;
-    padding-right: var(--space-3) !important;
+    padding-left: var(--space-4) !important;
+    padding-right: var(--space-4) !important;
     padding-bottom: var(--space-10) !important;
-    /* Safe area for notched phones */
-    padding-top: calc(var(--header-height) + env(safe-area-inset-top) + var(--space-4)) !important;
+    /* Safe area for notched phones - starts from very top */
+    padding-top: calc(var(--header-height) + env(safe-area-inset-top, 20px) + var(--space-4)) !important;
   }
 
   /* Hero panel — stacks vertically */
