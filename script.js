@@ -86,6 +86,25 @@ function showToast(message, type = 'info', duration = 3500) {
     }, duration);
 }
 
+// Force refresh all connected clients via Service Worker
+async function forceRefreshClients() {
+    try {
+        const registration = await navigator.serviceWorker.getRegistration();
+        if (registration?.active) {
+            // Send message to SW to trigger refresh on all clients
+            registration.active.postMessage({ type: 'FORCE_REFRESH' });
+            showToast('Refresh triggered on all devices.', 'success');
+        } else {
+            // Fallback: direct reload
+            window.location.reload();
+        }
+    } catch (error) {
+        console.warn('Force refresh failed:', error);
+        window.location.reload();
+    }
+}
+window.forceRefreshClients = forceRefreshClients;
+
 function initMobileMenu() {
     const toggle = document.querySelector('.mobile-toggle');
     const shell = document.querySelector('.app-shell');
@@ -383,7 +402,16 @@ async function registerServiceWorker() {
     }
 
     try {
-        await navigator.serviceWorker.register('./sw.js');
+        const registration = await navigator.serviceWorker.register('./sw.js');
+
+        // Listen for force refresh messages from server
+        navigator.serviceWorker.addEventListener('message', (event) => {
+            if (event.data?.type === 'RELOAD_NOW') {
+                console.log('[App] Force refresh received, reloading...');
+                window.location.reload();
+            }
+        });
+
     } catch (error) {
         console.warn('Service worker registration failed:', error);
     }
