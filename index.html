@@ -72,31 +72,6 @@
     </div>
 
     <div class="app-shell">
-        <button class="mobile-toggle" aria-label="Open navigation">Menu</button>
-        <aside class="sidebar">
-            <div class="sidebar-brand">
-                <p class="eyebrow">Student Portal</p>
-                <h1>University Dashboard</h1>
-                <p class="sidebar-copy">Live class updates in one place.</p>
-            </div>
-            <nav class="sidebar-nav">
-                <a href="#overview" class="nav-item active">Overview</a>
-                <a href="#announcements" class="nav-item">Announcements</a>
-                <a href="#assignments" class="nav-item">Assignments</a>
-                <a href="#deadlines" class="nav-item">Deadlines</a>
-                <a href="#quizzes" class="nav-item">Quizzes</a>
-            </nav>
-            <div class="sidebar-footer">
-                <button class="btn btn-secondary" type="button" onclick="DashboardUtils.toggleTheme()">
-                    Theme <span data-theme-toggle-label>Dark</span>
-                </button>
-                <button class="feedback-button" type="button" onclick="openFeedbackModal()">
-                    Send feedback
-                </button>
-            </div>
-
-        </aside>
-
         <main class="main-content">
             <header class="dashboard-header compact-header">
                 <div class="header-inner">
@@ -104,15 +79,14 @@
                         <h2>My Cust</h2>
                     </div>
                     <div class="dashboard-header-meta">
-                    <div class="server-chip">
-                        <span class="server-dot" id="server-dot"></span>
-                        <span data-connection-state>Online</span>
-                    </div>
-                    <a href="admin.html" class="header-meta-item" title="Admin panel">
-                        <span class="meta-label">Last update</span>
-                        <strong id="last-updated">Sync pending</strong>
-                    </a>
-
+                        <div class="server-chip">
+                            <span class="server-dot" id="server-dot"></span>
+                            <span data-connection-state>Online</span>
+                        </div>
+                        <a href="admin.html" class="header-meta-item" title="Admin panel">
+                            <span class="meta-label">Last update</span>
+                            <strong id="last-updated">Sync pending</strong>
+                        </a>
                     </div>
                 </div>
             </header>
@@ -152,6 +126,23 @@
                 </section>
             </div>
         </main>
+
+        <footer class="dashboard-footer">
+            <div class="footer-content">
+                <div class="footer-actions">
+                    <button class="btn btn-secondary btn-sm" type="button" onclick="DashboardUtils.toggleTheme()">
+                        Theme <span data-theme-toggle-label>Dark</span>
+                    </button>
+                    <button class="btn btn-secondary btn-sm" type="button" onclick="openFeedbackModal()">
+                        Feedback
+                    </button>
+                </div>
+                <div class="footer-info">
+                    <p class="footer-credits">Made with <span class="heart">❤️</span> by Ali Imran Malik</p>
+                    <p class="footer-copyright">&copy; 2026 My Cust. All rights reserved.</p>
+                </div>
+            </div>
+        </footer>
     </div>
 
     <div id="detail-modal" class="modal-overlay">
