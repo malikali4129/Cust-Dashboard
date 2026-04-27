@@ -665,6 +665,30 @@ async function renderSettingsContent(container, perms) {
         }
     }
 
+    // Show status only for editors (role 1 and 2), not for viewers (role 3)
+    const showStatus = perms.role < DashboardData.USER_ROLES.VIEWER;
+
+    // Show database operations only for superadmin (role 1)
+    const showDbOps = perms.role === DashboardData.USER_ROLES.SUPERADMIN;
+
+    const dbOpsHtml = showDbOps ? `
+        <section class="panel danger-panel">
+            <div class="panel-header">
+                <div>
+                    <p class="eyebrow">Cloud maintenance</p>
+                    <h2>Database Operations</h2>
+                </div>
+            </div>
+            <div class="danger-actions">
+                <label class="btn btn-secondary file-trigger">
+                    Import/Export Data
+                    <input type="file" accept=".json" onchange="handleImport(event)" style="display: none;">
+                </label>
+                <button class="btn btn-danger" onclick="handleClearCloud()">Clear Data</button>
+            </div>
+        </section>
+    ` : '';
+
     container.innerHTML = `
         <div class="settings-grid">
             <section class="panel">
@@ -683,31 +707,19 @@ async function renderSettingsContent(container, perms) {
                         <span class="profile-label">Role</span>
                         <span class="profile-value">${roleLabels[perms.role] || 'Viewer'}</span>
                     </div>
+                    ${showStatus ? `
                     <div class="profile-row">
                         <span class="profile-label">Status</span>
                         <span class="profile-value">${statusBadge}</span>
                     </div>
-                    ${perms.role >= DashboardData.USER_ROLES.EDITOR && perms.isActive ? `
+                    ` : ''}
+                    ${perms.role <= DashboardData.USER_ROLES.EDITOR && perms.isActive ? `
                         <button class="btn btn-secondary" onclick="openPasswordModal()">Change Password</button>
                     ` : ''}
                 </div>
             </section>
             ${usersListHtml}
-            <section class="panel danger-panel">
-                <div class="panel-header">
-                    <div>
-                        <p class="eyebrow">Cloud maintenance</p>
-                        <h2>Database Operations</h2>
-                    </div>
-                </div>
-                <div class="danger-actions">
-                    <label class="btn btn-secondary file-trigger">
-                        Import/Export Data
-                        <input type="file" accept=".json" onchange="handleImport(event)" style="display: none;">
-                    </label>
-                    <button class="btn btn-danger" onclick="handleClearCloud()">Clear Data</button>
-                </div>
-            </section>
+            ${dbOpsHtml}
         </div>
     `;
 }
@@ -790,9 +802,9 @@ function openAddUserModal() {
                         <label class="field">
                             <span>Role</span>
                             <select class="form-select" id="new-user-role">
-                                <option value="1">Viewer (1)</option>
-                                <option value="2">Editor (2)</option>
-                                <option value="3">Superadmin (3)</option>
+                                <option value="1">Viewer</option>
+                                <option value="2">Editor</option>
+                                <option value="3">Superadmin</option>
                             </select>
                         </label>
                     </form>
