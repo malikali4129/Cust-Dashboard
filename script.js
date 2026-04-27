@@ -86,28 +86,24 @@ function showToast(message, type = 'info', duration = 3500) {
     }, duration);
 }
 
-// Force logout all connected clients via Service Worker
-async function forceLogoutAll() {
+// Force refresh all connected clients via Service Worker
+async function forceRefreshClients() {
     try {
         const registration = await navigator.serviceWorker.getRegistration();
         if (registration?.active) {
-            // Send message to SW to trigger logout on all clients
-            registration.active.postMessage({ type: 'FORCE_LOGOUT' });
-            showToast('Logout triggered on all devices.', 'success');
+            // Send message to SW to trigger refresh on all clients
+            registration.active.postMessage({ type: 'FORCE_REFRESH' });
+            showToast('Refresh triggered on all devices.', 'success');
         } else {
-            // Fallback: clear session and reload
-            localStorage.removeItem('dashboard_admin_session');
-            localStorage.removeItem('dashboard_session');
-            window.location.href = 'admin.html';
+            // Fallback: direct reload
+            window.location.reload();
         }
     } catch (error) {
-        console.warn('Force logout failed:', error);
-        localStorage.removeItem('dashboard_admin_session');
-        localStorage.removeItem('dashboard_session');
-        window.location.href = 'admin.html';
+        console.warn('Force refresh failed:', error);
+        window.location.reload();
     }
 }
-window.forceLogoutAll = forceLogoutAll;
+window.forceRefreshClients = forceRefreshClients;
 
 function initMobileMenu() {
     const toggle = document.querySelector('.mobile-toggle');
@@ -408,15 +404,11 @@ async function registerServiceWorker() {
     try {
         const registration = await navigator.serviceWorker.register('./sw.js');
 
-        // Listen for force logout messages from server
+        // Listen for force refresh messages from server
         navigator.serviceWorker.addEventListener('message', (event) => {
-            if (event.data?.type === 'FORCE_LOGOUT') {
-                console.log('[App] Force logout received, clearing session...');
-                // Clear all session data
-                localStorage.removeItem('dashboard_admin_session');
-                localStorage.removeItem('dashboard_session');
-                // Redirect to admin login
-                window.location.href = 'admin.html';
+            if (event.data?.type === 'RELOAD_NOW') {
+                console.log('[App] Force refresh received, reloading...');
+                window.location.reload();
             }
         });
 
