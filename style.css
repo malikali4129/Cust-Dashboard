@@ -1950,8 +1950,101 @@ body.client-dashboard .dashboard-header {
   .danger-panel {
     grid-column: 1 / -1;
   }
+}
 
-  .hero-panel {
+/* ---------- User Profile ---------- */
+.user-profile {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.profile-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.profile-row:last-of-type {
+  border-bottom: none;
+  margin-bottom: var(--space-3);
+}
+
+.profile-label {
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+}
+
+.profile-value {
+  font-weight: 500;
+}
+
+/* ---------- Admin Users List ---------- */
+.admin-users-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.admin-user-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-3);
+  background: var(--bg-elevated);
+  border-radius: var(--radius);
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.admin-user-info {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.admin-user-info strong {
+  word-break: break-all;
+}
+
+.role-badge {
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.role-badge.role-1 {
+  background: var(--soft);
+  color: var(--text-secondary);
+}
+
+.role-badge.role-2 {
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+
+.role-badge.role-3 {
+  background: var(--secondary-soft);
+  color: var(--secondary);
+}
+
+.admin-user-actions {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.form-select-sm {
+  padding: var(--space-1) var(--space-2);
+  font-size: 0.8125rem;
+}
+
+/* ---------- Hero Panel ---------- */
+.hero-panel {
     display: flex;
     justify-content: space-between;
     align-items: center;

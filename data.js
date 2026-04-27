@@ -428,55 +428,120 @@ async function getCurrentAdminUser() {
     return response.json();
 }
 
-// Check if user is banned or deleted by validating the session
-// Returns { isValid: boolean, reason: string }
-async function checkUserStatus() {
+// Permission check constants
+const USER_ROLES = {
+    VIEWER: 1,
+    EDITOR: 2,
+    SUPERADMIN: 3
+};
+
+// Cooldown tracking
+let lastBlockedTime = 0;
+const BLOCK_COOLDOWN = 33000; // 33 seconds
+
+// Check user permissions - role and active status
+// Returns { role: number, status: string, isActive: boolean, canEdit: boolean, email: string }
+async function checkUserPermissions() {
     const session = getSession();
     if (!session?.access_token) {
-        return { isValid: false, reason: 'not_logged_in' };
+        return { role: 0, status: 'logged_out', isActive: false, canEdit: false, email: null };
     }
 
     try {
-        // Try to get user info - if banned/deleted, this will fail with 401 or return error
+        // Get user info from Supabase Auth
         const response = await request('/auth/v1/user', {
-            headers: buildHeaders({ auth: true }),
-            method: 'GET'
+            method: 'GET',
+            headers: buildHeaders({ auth: true })
         }, false);
 
         if (!response.ok) {
-            // Try to parse error response for specific banned message
-            const errorText = await response.text().catch(() => '');
-            let reason = 'session_invalid';
-
-            // Check if response indicates banned/deleted user
-            if (response.status === 401 || response.status === 403) {
-                try {
-                    const errorJson = JSON.parse(errorText);
-                    if (errorJson.msg && errorJson.msg.toLowerCase().includes('ban')) {
-                        reason = 'banned';
-                    } else if (errorJson.msg && errorJson.msg.toLowerCase().includes('delete')) {
-                        reason = 'deleted';
-                    } else if (errorJson.msg) {
-                        reason = 'session_revoked';
-                    }
-                } catch {
-                    // Not JSON, use status-based reason
-                    if (response.status === 401) {
-                        reason = 'unauthorized';
-                    }
-                }
-            }
-
-            return { isValid: false, reason };
+            return { role: 0, status: 'unauthorized', isActive: false, canEdit: false, email: null };
         }
 
-        // User is valid
-        return { isValid: true, reason: null };
+        const user = await response.json();
+        const email = user.email?.toLowerCase();
+
+        if (!email) {
+            return { role: 0, status: 'no_email', isActive: false, canEdit: false, email: null };
+        }
+
+        // Check admin_users table for role and status
+        const adminCheck = await request('/rest/v1/admin_users?email=eq.' + encodeURIComponent(email) + '&select=id,role,status', {
+            method: 'GET',
+            headers: buildHeaders({ auth: true })
+        }, false);
+
+        if (adminCheck.ok) {
+            const admins = await adminCheck.json();
+            if (admins.length > 0) {
+                const admin = admins[0];
+                const role = admin.role || 1;
+                const isActive = admin.status === 'active';
+
+                return {
+                    role: role,
+                    status: admin.status,
+                    isActive: isActive,
+                    canEdit: role >= USER_ROLES.EDITOR && isActive,
+                    email: email
+                };
+            }
+        }
+
+        // User not in admin_users table - default to viewer, inactive
+        return { role: USER_ROLES.VIEWER, status: 'not_found', isActive: false, canEdit: false, email: email };
     } catch (error) {
-        // Network or other error
-        console.warn('[checkUserStatus] Error:', error.message);
-        return { isValid: false, reason: 'connection_error' };
+        console.warn('[checkUserPermissions] Error:', error.message);
+        return { role: 0, status: 'error', isActive: false, canEdit: false, email: null };
     }
+}
+
+// Check if user can perform an action
+// Returns { allowed: boolean, cooldownRemaining: number, message: string }
+async function checkActionPermission() {
+    const perms = await checkUserPermissions();
+
+    // Check cooldown
+    const now = Date.now();
+    const cooldownRemaining = lastBlockedTime > 0 ? Math.max(0, Math.ceil((lastBlockedTime + BLOCK_COOLDOWN - now) / 1000)) : 0;
+
+    // If still in cooldown period
+    if (cooldownRemaining > 0) {
+        return {
+            allowed: false,
+            cooldownRemaining: cooldownRemaining,
+            message: `Access blocked. Please wait ${cooldownRemaining} seconds.`
+        };
+    }
+
+    // Not logged in
+    if (perms.role === 0) {
+        return { allowed: false, cooldownRemaining: 0, message: 'Please log in first.' };
+    }
+
+    // Viewer role - can only view
+    if (perms.role === USER_ROLES.VIEWER) {
+        return { allowed: false, cooldownRemaining: 0, message: 'Viewers cannot perform this action. Upgrade to Editor for full access.' };
+    }
+
+    // Editor but inactive
+    if (!perms.isActive) {
+        // Set blocked time for cooldown
+        lastBlockedTime = now;
+        return {
+            allowed: false,
+            cooldownRemaining: 33,
+            message: 'Your account is inactive. Please contact admin.'
+        };
+    }
+
+    // Superadmin or active editor
+    return { allowed: true, cooldownRemaining: 0, message: '' };
+}
+
+// Clear cooldown (call after successful action)
+function clearActionCooldown() {
+    lastBlockedTime = 0;
 }
 
 async function updatePassword(currentPassword, nextPassword) {
@@ -740,6 +805,73 @@ async function deleteFeedback(id) {
     await deleteRow('feedback', id);
 }
 
+// Admin user management functions
+async function getAdminUsers() {
+    const response = await request('/rest/v1/admin_users?select=*&order=created_at.desc', {
+        method: 'GET',
+        headers: buildHeaders({ auth: true })
+    });
+
+    if (!response.ok) {
+        throw new Error('Could not load admin users.');
+    }
+
+    return response.json();
+}
+
+async function addAdminUser(email, role, status = 'active') {
+    const response = await request('/rest/v1/admin_users', {
+        method: 'POST',
+        headers: buildHeaders({
+            auth: true,
+            extra: { Prefer: 'return=representation' }
+        }),
+        body: JSON.stringify({
+            email: email.toLowerCase(),
+            role: role,
+            status: status
+        })
+    });
+
+    if (!response.ok) {
+        const errorText = await response.text();
+        if (errorText.includes('duplicate')) {
+            throw new Error('User already exists.');
+        }
+        throw new Error('Could not add admin user.');
+    }
+
+    return response.json();
+}
+
+async function updateAdminUser(id, updates) {
+    const response = await request('/rest/v1/admin_users?id=eq.' + id, {
+        method: 'PATCH',
+        headers: buildHeaders({
+            auth: true,
+            extra: { Prefer: 'return=representation' }
+        }),
+        body: JSON.stringify(updates)
+    });
+
+    if (!response.ok) {
+        throw new Error('Could not update admin user.');
+    }
+
+    return response.json();
+}
+
+async function deleteAdminUser(id) {
+    const response = await request('/rest/v1/admin_users?id=eq.' + id, {
+        method: 'DELETE',
+        headers: buildHeaders({ auth: true })
+    });
+
+    if (!response.ok) {
+        throw new Error('Could not delete admin user.');
+    }
+}
+
 async function getStats() {
     const nowIso = new Date().toISOString();
 
@@ -885,13 +1017,16 @@ async function importData(jsonString) {
 
 window.DashboardData = {
     DEFAULT_PAGE_SIZE,
+    USER_ROLES,
     isSupabaseConfigured,
     clearLocalCache,
     getSession,
     signInAdmin,
     signOutAdmin,
     getCurrentAdminUser,
-    checkUserStatus,
+    checkUserPermissions,
+    checkActionPermission,
+    clearActionCooldown,
     updatePassword,
     getSettings,
     updateSettings,
@@ -921,5 +1056,9 @@ window.DashboardData = {
     clearAllContent,
     getFeedbackPage,
     addFeedback,
-    deleteFeedback
+    deleteFeedback,
+    getAdminUsers,
+    addAdminUser,
+    updateAdminUser,
+    deleteAdminUser
 };

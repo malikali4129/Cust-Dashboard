@@ -284,89 +284,16 @@ function currentConfig() {
 function showDashboard() {
     document.getElementById('login-screen')?.classList.add('hidden');
     document.getElementById('admin-dashboard')?.classList.remove('hidden');
-    // Start the user status polling
-    startUserStatusPolling();
     renderCurrentTab();
-}
-
-let userStatusInterval = null;
-
-// Start polling for user status every 15 seconds
-function startUserStatusPolling() {
-    // Check immediately first
-    checkUserStatus();
-
-    // Then check every 15 seconds
-    if (userStatusInterval) {
-        clearInterval(userStatusInterval);
-    }
-    userStatusInterval = setInterval(checkUserStatus, 15000);
-}
-
-// Stop the polling
-function stopUserStatusPolling() {
-    if (userStatusInterval) {
-        clearInterval(userStatusInterval);
-        userStatusInterval = null;
-    }
-}
-
-// Check user status - if banned/deleted, show error screen
-async function checkUserStatus() {
-    const status = await DashboardData.checkUserStatus();
-
-    if (!status.isValid) {
-        // Stop the polling since user is no longer valid
-        stopUserStatusPolling();
-
-        // Clear the session
-        await DashboardData.signOutAdmin();
-
-        // Show the banned screen
-        showBannedScreen(status.reason);
-    }
-}
-
-// Show the banned/deleted screen
-function showBannedScreen(reason) {
-    const bannedScreen = document.getElementById('banned-screen');
-    const adminDashboard = document.getElementById('admin-dashboard');
-    const loginScreen = document.getElementById('login-screen');
-
-    // Hide other screens
-    adminDashboard?.classList.add('hidden');
-    loginScreen?.classList.add('hidden');
-
-    // Update message based on reason
-    const messageEl = document.querySelector('.banned-message');
-    const headingEl = bannedScreen?.querySelector('h1');
-
-    if (messageEl) {
-        if (reason === 'banned') {
-            messageEl.textContent = 'Your admin account has been banned. You can no longer manage the dashboard.';
-        } else if (reason === 'deleted') {
-            messageEl.textContent = 'Your admin account has been deleted. You can no longer manage the dashboard.';
-        } else if (reason === 'unauthorized' || reason === 'session_revoked') {
-            messageEl.textContent = 'Your admin access has been revoked. You can no longer manage the dashboard.';
-        } else if (reason === 'not_logged_in') {
-            messageEl.textContent = 'Your session has expired. Please log in again.';
-        } else {
-            messageEl.textContent = 'Your admin access has been revoked. You can no longer manage the dashboard.';
-        }
-    }
-
-    // Show banned screen
-    bannedScreen?.classList.remove('hidden');
 }
 
 // Check auth status on page load
 async function checkAuth() {
-    const status = await DashboardData.checkUserStatus();
-    if (status.isValid) {
+    const perms = await DashboardData.checkUserPermissions();
+    console.log('[checkAuth] User permissions:', perms);
+
+    if (perms.role > 0) {
         showDashboard();
-    } else if (status.reason !== 'not_logged_in' && status.reason !== 'connection_error') {
-        // User was logged in but is now banned/deleted - show error screen
-        showBannedScreen(status.reason);
     }
 }
 
@@ -385,7 +312,6 @@ async function handleLogin(event) {
 }
 
 async function handleLogout() {
-    stopUserStatusPolling();
     await DashboardData.signOutAdmin();
     window.location.reload();
 }
@@ -642,6 +568,13 @@ async function deleteCurrentFeedback() {
 }
 
 async function deleteFeedbackItem(id) {
+    // Check permissions first
+    const perms = await DashboardData.checkActionPermission();
+    if (!perms.allowed) {
+        DashboardUtils.showToast(perms.message, 'error');
+        return;
+    }
+
     const confirmed = await DashboardUtils.confirmAction('Delete this feedback?');
     if (!confirmed) {
         return;
@@ -671,59 +604,263 @@ async function deleteFeedbackItem(id) {
     }
 }
 
+let currentUserPerms = null;
+
 function renderSettings(container) {
+    // Get current user permissions for display
+    DashboardData.checkUserPermissions().then(perms => {
+        currentUserPerms = perms;
+        renderSettingsContent(container, perms);
+    });
+}
+
+async function renderSettingsContent(container, perms) {
+    const roleLabels = { 1: 'Viewer', 2: 'Editor', 3: 'Superadmin' };
+    const statusBadge = perms.isActive
+        ? '<span class="badge badge-normal">Active</span>'
+        : '<span class="badge badge-high">Inactive</span>';
+
+    // If superadmin, load admin users list
+    let usersListHtml = '';
+    if (perms.role === DashboardData.USER_ROLES.SUPERADMIN) {
+        try {
+            const users = await DashboardData.getAdminUsers();
+            usersListHtml = `
+                <section class="panel">
+                    <div class="panel-header">
+                        <div>
+                            <p class="eyebrow">User Management</p>
+                            <h2>Admin Users</h2>
+                        </div>
+                        <button class="btn btn-primary btn-sm" onclick="openAddUserModal()">+ Add User</button>
+                    </div>
+                    <div class="admin-users-list">
+                        ${users.map(u => `
+                            <div class="admin-user-row">
+                                <div class="admin-user-info">
+                                    <strong>${DashboardUtils.escapeHtml(u.email)}</strong>
+                                    <span class="role-badge role-${u.role}">${roleLabels[u.role] || 'Viewer'}</span>
+                                    ${u.email === perms.email ? '<span class="badge badge-normal">You</span>' : ''}
+                                </div>
+                                <div class="admin-user-actions">
+                                    <select class="form-select form-select-sm" onchange="handleUserStatusChange('${u.id}', this.value)" style="width: auto;">
+                                        <option value="active" ${u.status === 'active' ? 'selected' : ''}>Active</option>
+                                        <option value="inactive" ${u.status === 'inactive' ? 'selected' : ''}>Inactive</option>
+                                    </select>
+                                    ${u.email !== perms.email ? `
+                                        <select class="form-select form-select-sm" onchange="handleUserRoleChange('${u.id}', this.value)" style="width: auto;">
+                                            <option value="1" ${u.role === 1 ? 'selected' : ''}>Viewer</option>
+                                            <option value="2" ${u.role === 2 ? 'selected' : ''}>Editor</option>
+                                            <option value="3" ${u.role === 3 ? 'selected' : ''}>Superadmin</option>
+                                        </select>
+                                    ` : ''}
+                                </div>
+                            </div>
+                        `).join('') || '<p>No other users.</p>'}
+                    </div>
+                </section>
+            `;
+        } catch (err) {
+            usersListHtml = `<p class="error">Could not load users.</p>`;
+        }
+    }
+
     container.innerHTML = `
         <div class="settings-grid">
             <section class="panel">
                 <div class="panel-header">
                     <div>
-                        <p class="eyebrow">Admin access</p>
-                        <h2>Change password</h2>
+                        <p class="eyebrow">Current User</p>
+                        <h2>Profile</h2>
                     </div>
-                <form class="editor-form" onsubmit="changePassword(event)">
-                    <label class="field">
-                        <span>Current password</span>
-                        <input class="form-input" id="current-password" type="password" required>
-                    </label>
-                    <label class="field">
-                        <span>New password</span>
-                        <input class="form-input" id="new-password" type="password" minlength="8" required>
-                    </label>
-                    <label class="field">
-                        <span>Confirm password</span>
-                        <input class="form-input" id="confirm-password" type="password" minlength="8" required>
-                    </label>
-                    <button class="btn btn-primary" type="submit">Update password</button>
-                </form>
-            </section>
-            <section class="panel">
-                <div class="panel-header">
-                    <div>
-                        <p class="eyebrow">Calendar clarity</p>
-                        <h2>Pakistan time only</h2>
+                </div>
+                <div class="user-profile">
+                    <div class="profile-row">
+                        <span class="profile-label">Email</span>
+                        <span class="profile-value">${DashboardUtils.escapeHtml(perms.email || 'N/A')}</span>
                     </div>
-                <div class="settings-note">
-                    All rendered dates use Asia/Karachi and can no longer be changed from the admin panel.
+                    <div class="profile-row">
+                        <span class="profile-label">Role</span>
+                        <span class="profile-value">${roleLabels[perms.role] || 'Viewer'}</span>
+                    </div>
+                    <div class="profile-row">
+                        <span class="profile-label">Status</span>
+                        <span class="profile-value">${statusBadge}</span>
+                    </div>
+                    ${perms.role >= DashboardData.USER_ROLES.EDITOR && perms.isActive ? `
+                        <button class="btn btn-secondary" onclick="openPasswordModal()">Change Password</button>
+                    ` : ''}
                 </div>
             </section>
+            ${usersListHtml}
             <section class="panel danger-panel">
                 <div class="panel-header">
                     <div>
                         <p class="eyebrow">Cloud maintenance</p>
-                        <h2>Backup and reset</h2>
+                        <h2>Database Operations</h2>
                     </div>
+                </div>
                 <div class="danger-actions">
-                    <button class="btn btn-secondary" onclick="DashboardData.exportData()">Export JSON</button>
                     <label class="btn btn-secondary file-trigger">
-                        Import JSON
-                        <input type="file" accept=".json" onchange="handleImport(event)">
+                        Import/Export Data
+                        <input type="file" accept=".json" onchange="handleImport(event)" style="display: none;">
                     </label>
-                    <button class="btn btn-danger" onclick="handleClearCloud()">Clear cloud content</button>
+                    <button class="btn btn-danger" onclick="handleClearCloud()">Clear Data</button>
                 </div>
             </section>
         </div>
     `;
 }
+
+// Add modal HTML to admin.html
+function openPasswordModal() {
+    const modalHtml = `
+        <div id="password-modal" class="modal-overlay" onclick="if(event.target === this) DashboardUtils.closeModal('password-modal')">
+            <div class="modal">
+                <div class="modal-header">
+                    <h3>Change Password</h3>
+                    <button class="modal-close" type="button" onclick="DashboardUtils.closeModal('password-modal')">Close</button>
+                </div>
+                <div class="modal-body">
+                    <form id="password-form" class="editor-form">
+                        <label class="field">
+                            <span>Current password</span>
+                            <input class="form-input" id="modal-current-password" type="password" required>
+                        </label>
+                        <label class="field">
+                            <span>New password</span>
+                            <input class="form-input" id="modal-new-password" type="password" minlength="8" required>
+                        </label>
+                        <label class="field">
+                            <span>Confirm password</span>
+                            <input class="form-input" id="modal-confirm-password" type="password" minlength="8" required>
+                        </label>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" type="button" onclick="DashboardUtils.closeModal('password-modal')">Cancel</button>
+                    <button class="btn btn-primary" type="button" onclick="submitPasswordChange()">Update</button>
+                </div>
+            </div>
+        </div>
+    `;
+
+    // Remove existing modal if any
+    const existing = document.getElementById('password-modal');
+    if (existing) existing.remove();
+
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    DashboardUtils.openModal('password-modal');
+}
+
+async function submitPasswordChange() {
+    const currentPassword = document.getElementById('modal-current-password').value;
+    const newPassword = document.getElementById('modal-new-password').value;
+    const confirmPassword = document.getElementById('modal-confirm-password').value;
+
+    if (newPassword !== confirmPassword) {
+        DashboardUtils.showToast('Passwords do not match.', 'error');
+        return;
+    }
+
+    try {
+        await DashboardData.updatePassword(currentPassword, newPassword);
+        DashboardUtils.showToast('Password updated.', 'success');
+        DashboardUtils.closeModal('password-modal');
+        document.getElementById('password-form').reset();
+    } catch (error) {
+        DashboardUtils.showToast(error.message || 'Could not update password.', 'error');
+    }
+}
+
+function openAddUserModal() {
+    const modalHtml = `
+        <div id="add-user-modal" class="modal-overlay" onclick="if(event.target === this) DashboardUtils.closeModal('add-user-modal')">
+            <div class="modal">
+                <div class="modal-header">
+                    <h3>Add Admin User</h3>
+                    <button class="modal-close" type="button" onclick="DashboardUtils.closeModal('add-user-modal')">Close</button>
+                </div>
+                <div class="modal-body">
+                    <form id="add-user-form" class="editor-form">
+                        <label class="field">
+                            <span>Email</span>
+                            <input class="form-input" id="new-user-email" type="email" required>
+                        </label>
+                        <label class="field">
+                            <span>Role</span>
+                            <select class="form-select" id="new-user-role">
+                                <option value="1">Viewer (1)</option>
+                                <option value="2">Editor (2)</option>
+                                <option value="3">Superadmin (3)</option>
+                            </select>
+                        </label>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" type="button" onclick="DashboardUtils.closeModal('add-user-modal')">Cancel</button>
+                    <button class="btn btn-primary" type="button" onclick="submitAddUser()">Add User</button>
+                </div>
+            </div>
+        </div>
+    `;
+
+    const existing = document.getElementById('add-user-modal');
+    if (existing) existing.remove();
+
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    DashboardUtils.openModal('add-user-modal');
+}
+
+async function submitAddUser() {
+    const email = document.getElementById('new-user-email').value.trim();
+    const role = parseInt(document.getElementById('new-user-role').value);
+
+    if (!email) {
+        DashboardUtils.showToast('Email is required.', 'error');
+        return;
+    }
+
+    try {
+        await DashboardData.addAdminUser(email, role, 'active');
+        DashboardUtils.showToast('User added successfully.', 'success');
+        DashboardUtils.closeModal('add-user-modal');
+
+        // Refresh settings to show new user
+        renderSettings(document.getElementById('tab-content'));
+    } catch (error) {
+        DashboardUtils.showToast(error.message || 'Could not add user.', 'error');
+    }
+}
+
+async function handleUserStatusChange(userId, newStatus) {
+    try {
+        await DashboardData.updateAdminUser(userId, { status: newStatus });
+        DashboardUtils.showToast('User status updated.', 'success');
+    } catch (error) {
+        DashboardUtils.showToast(error.message || 'Could not update status.', 'error');
+        // Refresh to reset select
+        renderSettings(document.getElementById('tab-content'));
+    }
+}
+
+async function handleUserRoleChange(userId, newRole) {
+    try {
+        await DashboardData.updateAdminUser(userId, { role: parseInt(newRole) });
+        DashboardUtils.showToast('User role updated.', 'success');
+    } catch (error) {
+        DashboardUtils.showToast(error.message || 'Could not update role.', 'error');
+        renderSettings(document.getElementById('tab-content'));
+    }
+}
+
+// Expose functions globally
+window.openPasswordModal = openPasswordModal;
+window.submitPasswordChange = submitPasswordChange;
+window.openAddUserModal = openAddUserModal;
+window.submitAddUser = submitAddUser;
+window.handleUserStatusChange = handleUserStatusChange;
+window.handleUserRoleChange = handleUserRoleChange;
 
 function changePage(delta) {
     adminState.page = Math.max(1, adminState.page + delta);
@@ -762,6 +899,13 @@ async function editItem(id) {
 }
 
 async function saveItem() {
+    // Check permissions first
+    const perms = await DashboardData.checkActionPermission();
+    if (!perms.allowed) {
+        DashboardUtils.showToast(perms.message, 'error');
+        return;
+    }
+
     const form = document.getElementById('item-form');
     if (!form) {
         return;
@@ -858,6 +1002,13 @@ async function saveItem() {
 }
 
 async function deleteItem(id) {
+    // Check permissions first
+    const perms = await DashboardData.checkActionPermission();
+    if (!perms.allowed) {
+        DashboardUtils.showToast(perms.message, 'error');
+        return;
+    }
+
     const confirmed = await DashboardUtils.confirmAction('Delete this record from Supabase?');
     if (!confirmed) {
         return;
@@ -885,6 +1036,13 @@ async function deleteItem(id) {
 }
 
 async function changePassword(event) {
+    // Check permissions first
+    const perms = await DashboardData.checkActionPermission();
+    if (!perms.allowed) {
+        DashboardUtils.showToast(perms.message, 'error');
+        return;
+    }
+
     event.preventDefault();
     const currentPassword = document.getElementById('current-password').value;
     const nextPassword = document.getElementById('new-password').value;
@@ -905,6 +1063,13 @@ async function changePassword(event) {
 }
 
 async function handleImport(event) {
+    // Check permissions first
+    const perms = await DashboardData.checkActionPermission();
+    if (!perms.allowed) {
+        DashboardUtils.showToast(perms.message, 'error');
+        return;
+    }
+
     const file = event.target.files?.[0];
     if (!file) {
         return;
@@ -923,6 +1088,13 @@ async function handleImport(event) {
 }
 
 async function handleClearCloud() {
+    // Check permissions first
+    const perms = await DashboardData.checkActionPermission();
+    if (!perms.allowed) {
+        DashboardUtils.showToast(perms.message, 'error');
+        return;
+    }
+
     const confirmed = await DashboardUtils.confirmAction('Clear all announcements, assignments, deadlines, and quizzes from Supabase?');
     if (!confirmed) {
         return;
