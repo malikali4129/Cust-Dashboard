@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'v13';
+const CACHE_VERSION = 'v11';
 const SHELL_CACHE = `dashboard-shell-${CACHE_VERSION}`;
 const FONT_CACHE = `dashboard-fonts-${CACHE_VERSION}`;
 const DATA_CACHE = `dashboard-data-${CACHE_VERSION}`;
@@ -21,36 +21,21 @@ const FONT_ORIGINS = [
     'https://fonts.gstatic.com'
 ];
 
-// ─── Install: pre-cache shell + immediate activation ──
+// ─── Install: pre-cache shell (per-asset so one failure doesn't block all) ──
 self.addEventListener('install', (event) => {
-    // Skip waiting - activate immediately when new version arrives
-    self.skipWaiting();
     event.waitUntil(
         caches.open(SHELL_CACHE).then(async (cache) => {
             for (const asset of SHELL_ASSETS) {
                 try {
                     await cache.add(asset);
                 } catch (err) {
+                    // Per-asset failure — log and continue (assets may succeed on next load)
                     console.warn(`[SW] Could not cache ${asset}:`, err.message);
                 }
             }
         })
     );
-});
-
-// Listen for server commands to force refresh
-self.addEventListener('message', (event) => {
-    if (event.data?.type === 'FORCE_REFRESH') {
-        console.log('[SW] Force refresh triggered from server');
-        // Tell all clients to reload
-        self.clients.matchAll().then((clients) => {
-            clients.forEach((client) => {
-                client.postMessage({ type: 'RELOAD_NOW' });
-            });
-        });
-        // Immediately skip waiting to activate new SW
-        self.skipWaiting();
-    }
+    self.skipWaiting();
 });
 
 // ─── Activate: purge old caches ─────────────────────────────────────────────
@@ -67,8 +52,7 @@ self.addEventListener('activate', (event) => {
                 .map((key) => caches.delete(key))
         ))
     );
-    // Immediately claim all clients
-    event.waitUntil(self.clients.claim());
+    self.clients.claim();
 });
 
 // ─── Fetch: handle different request types ──────────────────────────────────
