@@ -380,6 +380,16 @@ document.addEventListener('DOMContentLoaded', () => {
     initConnectivity();
     registerServiceWorker();
     initPwaInstall();
+    // For the client-facing dashboard (index.html) remove the persistent sidebar
+    // Admin panel (`admin.html`) keeps the sidebar.
+    const isAdmin = window.location.pathname && window.location.pathname.endsWith('admin.html');
+    if (!isAdmin) {
+        const sidebar = document.querySelector('.sidebar');
+        if (sidebar) sidebar.remove();
+        const toggle = document.querySelector('.mobile-toggle');
+        if (toggle) toggle.remove();
+        document.body.classList.add('client-dashboard');
+    }
 });
 
 // ---------- PWA Install Banner ----------

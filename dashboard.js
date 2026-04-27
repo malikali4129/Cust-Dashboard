@@ -388,6 +388,7 @@ async function initDashboard() {
         // Start update polling + offline detection only after initial load
         startUpdatePolling();
         initOfflineDetection();
+        finalizeLoad();
     } catch (error) {
         console.error('[initDashboard] Load failed:', error.message || error);
         setServerLiveState(false);
@@ -398,6 +399,21 @@ async function initDashboard() {
         // Still start polling so the update prompt works when connection returns
         startUpdatePolling();
         initOfflineDetection();
+        finalizeLoad();
+    }
+}
+
+function finalizeLoad() {
+    try {
+        const pre = document.getElementById('preloader');
+        if (pre) {
+            pre.classList.add('hidden');
+            setTimeout(() => pre.remove(), 700);
+        }
+        // Add a ready class that triggers CSS entrance animations
+        document.body.classList.add('dashboard-ready');
+    } catch (err) {
+        // ignore
     }
 }
 
