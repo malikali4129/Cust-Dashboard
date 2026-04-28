@@ -1347,6 +1347,8 @@ body.client-dashboard .dashboard-header {
   width: 100%;
   margin: 0 auto;
   align-items: center;
+  /* Safe area for notched devices */
+  padding-top: env(safe-area-inset-top, 0);
 }
 
 @media (min-width: 640px) {
