@@ -412,18 +412,21 @@ document.addEventListener('DOMContentLoaded', () => {
 let PWA_DEFERRED_PROMPT = null;
 
 async function initPwaInstall() {
-    // Listen for the install prompt event
+    // Already installed — don't show banner
+    if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) {
+        return;
+    }
+
+    // Listen for the install prompt event (Chrome/Android)
     window.addEventListener('beforeinstallprompt', (e) => {
-        console.log('beforeinstallprompt fired', e);
         e.preventDefault();
         PWA_DEFERRED_PROMPT = e;
         showPwaBanner();
     });
 
-    // Already installed — don't show banner
-    if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) {
-        return;
-    }
+    // Show banner immediately for all browsers
+    // iOS users will see instructions when they tap "Install"
+    showPwaBanner();
 
     // When app is installed, hide the banner permanently
     window.addEventListener('appinstalled', () => {
