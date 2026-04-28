@@ -412,17 +412,17 @@ document.addEventListener('DOMContentLoaded', () => {
 let PWA_DEFERRED_PROMPT = null;
 
 async function initPwaInstall() {
-    // Already installed — don't show banner
-    if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) {
-        return;
-    }
-
     // Listen for the install prompt event
     window.addEventListener('beforeinstallprompt', (e) => {
         e.preventDefault();
         PWA_DEFERRED_PROMPT = e;
         showPwaBanner();
     });
+
+    // Already installed — don't show banner
+    if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) {
+        return;
+    }
 
     // When app is installed, hide the banner permanently
     window.addEventListener('appinstalled', () => {

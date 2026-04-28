@@ -986,24 +986,29 @@ svg {
   opacity: 0;
   visibility: hidden;
 }
-.preloader-inner {
-  text-align: center;
-}
-.preloader-spinner {
-  width: 48px;
-  height: 48px;
+
+/* Loading animation */
+.loader {
+  --r1: 154%;
+  --r2: 68.5%;
+  width: 60px;
+  aspect-ratio: 1;
   border-radius: 50%;
-  border: 4px solid rgba(255,255,255,0.06);
-  border-top-color: var(--accent);
-  animation: spin 900ms linear infinite;
-  margin: 0 auto 16px auto;
+  background:
+    radial-gradient(var(--r1) var(--r2) at top   ,#0000 79.5%,var(--accent) 80%),
+    radial-gradient(var(--r1) var(--r2) at bottom,var(--accent) 79.5%,#0000 80%),
+    radial-gradient(var(--r1) var(--r2) at top   ,#0000 79.5%,var(--accent) 80%),
+    #ccc;
+  background-size: 50.5% 220%;
+  background-position: -100% 0%,0% 0%,100% 0%;
+  background-repeat:no-repeat;
+  animation: l9 2s infinite linear;
 }
-@keyframes spin { to { transform: rotate(360deg); } }
-.preloader-lines { display: grid; gap: 10px; width: 220px; margin: 0 auto; }
-.preloader-lines .line { height: 10px; border-radius: 8px; background: linear-gradient(90deg, rgba(255,255,255,0.03), rgba(255,255,255,0.06)); }
-.preloader-lines .line.short { width: 30%; }
-.preloader-lines .line.medium { width: 55%; }
-.preloader-lines .line.long { width: 100%; }
+@keyframes l9 {
+    33%  {background-position:    0% 33% ,100% 33% ,200% 33% }
+    66%  {background-position: -100%  66%,0%   66% ,100% 66% }
+    100% {background-position:    0% 100%,100% 100%,200% 100%}
+}
 
 /* Stepper */
 .preloader-steps { margin-top: 6px; }
@@ -2345,14 +2350,13 @@ body.client-dashboard .dashboard-header {
 
 /* ---------- Hero Panel ---------- */
 .hero-panel {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
 
-  .hero-meta {
-    margin-top: 0;
-  }
+.hero-panel .hero-meta {
+  margin-top: 0;
 }
 
 /* ---------- Noscript Fallback ---------- */
