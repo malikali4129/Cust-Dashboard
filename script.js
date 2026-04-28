@@ -414,6 +414,7 @@ let PWA_DEFERRED_PROMPT = null;
 async function initPwaInstall() {
     // Listen for the install prompt event
     window.addEventListener('beforeinstallprompt', (e) => {
+        console.log('beforeinstallprompt fired', e);
         e.preventDefault();
         PWA_DEFERRED_PROMPT = e;
         showPwaBanner();
