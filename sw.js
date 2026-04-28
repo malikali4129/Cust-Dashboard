@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'v25';
+const CACHE_VERSION = 'v26';
 const SHELL_CACHE = `dashboard-shell-${CACHE_VERSION}`;
 const FONT_CACHE = `dashboard-fonts-${CACHE_VERSION}`;
 const DATA_CACHE = `dashboard-data-${CACHE_VERSION}`;
@@ -167,22 +167,31 @@ async function cacheFirstWithFallback(request, cacheName) {
     }
 }
 
-// Network-first for API data: try network, fall back to cache
+// Cache-first for API data: try cache first, then network, save to cache
 async function networkFirst(request, cacheName) {
+    const cache = await caches.open(cacheName);
+
+    // Try cache first
+    const cached = await cache.match(request);
+    if (cached) {
+        // Return cached immediately, then update in background
+        fetch(request).then(response => {
+            if (response.ok) {
+                cache.put(request, response.clone());
+            }
+        }).catch(() => {});
+        return cached;
+    }
+
+    // No cache, try network
     try {
         const response = await fetch(request);
         if (response.ok) {
-            const cache = await caches.open(cacheName);
             cache.put(request, response.clone());
         }
         return response;
     } catch (_) {
-        // Fall back to cache
-        const cache = await caches.open(cacheName);
-        const cached = await cache.match(request);
-        if (cached) {
-            return cached;
-        }
+        // Return empty only if no cache AND no network
         return new Response(JSON.stringify([]), {
             headers: { 'Content-Type': 'application/json' }
         });
