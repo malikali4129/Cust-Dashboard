@@ -349,7 +349,7 @@ async function createRow(table, payload, { auth = true } = {}) {
     return result;
 }
 
-async function updateRow(table, id, payload) {
+async function updateRow(table, id, payload, shouldLog = true) {
     const response = await request(`/rest/v1/${table}?id=eq.${encodeURIComponent(id)}`, {
         method: 'PATCH',
         headers: buildHeaders({
@@ -365,7 +365,9 @@ async function updateRow(table, id, payload) {
         throw new Error(`Could not update ${table} (${response.status}).`);
     }
 
-    logAction(`update_${table}`, { id: id, data: payload });
+    if (shouldLog) {
+        logAction(`update_${table}`, { id: id, data: payload });
+    }
     return result;
 }
 
@@ -383,12 +385,14 @@ async function deleteRow(table, id) {
 }
 
 async function touchSettings(partial = {}) {
+    // Update settings without logging - let manual changes be logged
     await updateRow('settings', 1, {
         last_updated: new Date().toISOString(),
         ...partial
-    });
+    }, false); // false = no logging
 }
 
+// Helper to update row (use logging by default)
 async function signInAdmin(email, password) {
     const response = await request('/auth/v1/token?grant_type=password', {
         method: 'POST',
@@ -902,9 +906,7 @@ async function logAction(action, details = {}) {
         const logEntry = {
             email: email,
             action: action,
-            details: details,
-            ip_address: null,
-            user_agent: navigator.userAgent
+            details: details
         };
 
         console.log('[logAction] Logging:', logEntry);

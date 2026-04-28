@@ -988,10 +988,6 @@ async function loadLogs(page = 1) {
                             <span class="detail-label">Timestamp</span>
                             <span class="detail-value">${new Date(log.created_at).toLocaleString('en-PK', { timeZone: 'Asia/Karachi' })}</span>
                         </div>
-                        <div class="detail-row">
-                            <span class="detail-label">User Agent</span>
-                            <span class="detail-value log-user-agent">${log.user_agent ? DashboardUtils.escapeHtml(log.user_agent.substring(0, 60)) + '...' : 'N/A'}</span>
-                        </div>
                     </div>
                 </div>
             `).join('');
