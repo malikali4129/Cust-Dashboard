@@ -439,6 +439,35 @@ function renderRecords(container) {
     const config = currentConfig();
     const totalPages = Math.max(1, Math.ceil(adminState.total / adminState.pageSize));
 
+    // Check if panel already exists - if so, just update table content
+    const existingPanel = container.querySelector('.panel');
+    if (existingPanel) {
+        // Update only the table and pagination, keep header/search
+        const tbody = existingPanel.querySelector('table.data-table tbody');
+        const mobileList = existingPanel.querySelector('.mobile-record-list');
+        const paginationSpan = existingPanel.querySelector('.pagination-bar span');
+        const prevBtn = existingPanel.querySelector('.pagination-bar button:first-child');
+        const nextBtn = existingPanel.querySelector('.pagination-bar button:last-child');
+
+        if (tbody) {
+            tbody.innerHTML = adminState.items.map(config.desktopRow).join('') || '<tr><td colspan="6">No results.</td></tr>';
+        }
+        if (mobileList) {
+            mobileList.innerHTML = adminState.items.map(config.mobileCard).join('') || '<div class="empty-state"><h3>No results</h3><p>Try a different search or create a new record.</p></div>';
+        }
+        if (paginationSpan) {
+            paginationSpan.textContent = `Page ${adminState.page} of ${totalPages}`;
+        }
+        if (prevBtn) {
+            prevBtn.disabled = adminState.page === 1;
+        }
+        if (nextBtn) {
+            nextBtn.disabled = adminState.page >= totalPages;
+        }
+        return;
+    }
+
+    // First render - create full panel
     container.innerHTML = `
         <section class="panel">
             <div class="panel-header">
@@ -1447,18 +1476,7 @@ async function deleteItem(id) {
         return;
     }
 
-    // Add deleting class for animation to the row/card
-    const row = document.querySelector(`tr[data-id="${id}"`);
-    const card = document.querySelector(`.record-card[data-id="${id}"]`);
-    const target = row || card;
-    if (target) {
-        target.classList.add('deleting');
-    }
-
-    // Wait for animation
-    await new Promise(r => setTimeout(r, 400));
-
-    // Then remove from state
+    // Instant remove - no animation
     const config = currentConfig();
     const previousItems = [...adminState.items];
     const removed = previousItems.find((item) => item.id === id);
