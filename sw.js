@@ -57,7 +57,7 @@ self.addEventListener('activate', (event) => {
 
 // Handle messages from client (e.g., skip waiting and activate new version)
 self.addEventListener('message', (event) => {
-    if (event.data === 'skipWaiting') {
+    if (event.data && event.data.type === 'skipWaiting') {
         self.skipWaiting();
     }
 });

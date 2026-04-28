@@ -550,14 +550,18 @@ async function registerServiceWorker() {
 
     try {
         const registration = await navigator.serviceWorker.register('./sw.js');
+        console.log('[SW] Registered:', registration);
 
         // Listen for updates
         registration.addEventListener('updatefound', () => {
+            console.log('[SW] Update found');
             const newWorker = registration.installing;
             if (newWorker) {
                 newWorker.addEventListener('statechange', () => {
-                    // When new worker is installed, activate it immediately
-                    if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                    console.log('[SW] Worker state:', newWorker.state);
+                    // When new worker is installed, activate and reload
+                    if (newWorker.state === 'installed' || newWorker.state === 'activated') {
+                        console.log('[SW] Reloading for update...');
                         // Show toast that update is ready
                         if (typeof DashboardUtils?.showToast === 'function') {
                             DashboardUtils.showToast('Update available. Refreshing...', 'info');
@@ -566,12 +570,17 @@ async function registerServiceWorker() {
                         setTimeout(() => window.location.reload(), 1500);
                     }
                 });
+
+                // Tell the new worker to skip waiting immediately
+                newWorker.postMessage({ type: 'skipWaiting' });
             }
         });
 
-        // Check if there's already a waiting worker (update available)
+        // Check if there's already a waiting worker (update available from previous session)
         if (registration.waiting) {
-            registration.waiting.postMessage('skipWaiting');
+            console.log('[SW] Waiting worker found, triggering update...');
+            registration.waiting.postMessage({ type: 'skipWaiting' });
+            setTimeout(() => window.location.reload(), 1500);
         }
     } catch (error) {
         console.warn('Service worker registration failed:', error);
