@@ -548,6 +548,19 @@ async function registerServiceWorker() {
         return;
     }
 
+    // Track if we've already handled an update to prevent duplicates
+    let updateHandled = false;
+
+    const triggerUpdate = () => {
+        if (updateHandled) return;
+        updateHandled = true;
+        console.log('[SW] Triggering update...');
+        if (typeof DashboardUtils?.showToast === 'function') {
+            DashboardUtils.showToast('Update available. Refreshing...', 'info');
+        }
+        setTimeout(() => window.location.reload(), 1500);
+    };
+
     try {
         const registration = await navigator.serviceWorker.register('./sw.js');
         console.log('[SW] Registered:', registration);
@@ -559,28 +572,19 @@ async function registerServiceWorker() {
             if (newWorker) {
                 newWorker.addEventListener('statechange', () => {
                     console.log('[SW] Worker state:', newWorker.state);
-                    // When new worker is installed, activate and reload
                     if (newWorker.state === 'installed' || newWorker.state === 'activated') {
-                        console.log('[SW] Reloading for update...');
-                        // Show toast that update is ready
-                        if (typeof DashboardUtils?.showToast === 'function') {
-                            DashboardUtils.showToast('Update available. Refreshing...', 'info');
-                        }
-                        // Reload to get new version
-                        setTimeout(() => window.location.reload(), 1500);
+                        triggerUpdate();
                     }
                 });
-
-                // Tell the new worker to skip waiting immediately
                 newWorker.postMessage({ type: 'skipWaiting' });
             }
         });
 
-        // Check if there's already a waiting worker (update available from previous session)
-        if (registration.waiting) {
-            console.log('[SW] Waiting worker found, triggering update...');
+        // Check if there's already a waiting worker (but only if not already updating)
+        if (registration.waiting && !updateHandled) {
+            console.log('[SW] Waiting worker found');
             registration.waiting.postMessage({ type: 'skipWaiting' });
-            setTimeout(() => window.location.reload(), 1500);
+            triggerUpdate();
         }
     } catch (error) {
         console.warn('Service worker registration failed:', error);

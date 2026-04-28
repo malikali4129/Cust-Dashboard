@@ -1335,7 +1335,7 @@ body.client-dashboard .dashboard-header {
 /* ---------- Toasts ---------- */
 .toast-container {
   position: fixed;
-  top: 20px;
+  top: calc(var(--header-height) + 20px + env(safe-area-inset-top, 0px));
   right: 20px;
   left: 20px;
   display: flex;
@@ -1347,12 +1347,11 @@ body.client-dashboard .dashboard-header {
   width: 100%;
   margin: 0 auto;
   align-items: center;
-  /* Safe area for notched devices */
-  padding-top: env(safe-area-inset-top, 0);
 }
 
 @media (min-width: 640px) {
   .toast-container {
+    top: calc(var(--header-height) + 20px);
     left: auto;
     margin: 0;
     align-items: flex-end;
