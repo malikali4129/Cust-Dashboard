@@ -285,12 +285,7 @@ function actionButtons(id) {
     return `
         <div class="table-actions">
             <button class="btn btn-secondary btn-sm" onclick="editItem('${id}')">Edit</button>
-            <div class="confirm-dropdown">
-                <button class="btn btn-danger btn-sm dropdown-toggle" onclick="toggleConfirmDropdown(this)">Delete</button>
-                <div class="confirm-dropdown-menu">
-                    <button class="btn btn-danger btn-sm" onclick="deleteItem('${id}')">Confirm Delete</button>
-                </div>
-            </div>
+            <button class="btn btn-danger btn-sm" onclick="showDeleteConfirm('${id}')">Delete</button>
         </div>
     `;
 }
@@ -299,38 +294,25 @@ function mobileActions(id) {
     return `
         <div class="record-card-actions">
             <button class="btn btn-secondary btn-sm" onclick="editItem('${id}')">Edit</button>
-            <div class="confirm-dropdown">
-                <button class="btn btn-danger btn-sm dropdown-toggle" onclick="toggleConfirmDropdown(this)">Delete</button>
-                <div class="confirm-dropdown-menu">
-                    <button class="btn btn-danger btn-sm" onclick="deleteItem('${id}')">Confirm Delete</button>
-                </div>
-            </div>
+            <button class="btn btn-danger btn-sm" onclick="showDeleteConfirm('${id}')">Delete</button>
         </div>
     `;
 }
 
-function toggleConfirmDropdown(btn) {
-    const dropdown = btn.closest('.confirm-dropdown');
-    const menu = dropdown.querySelector('.confirm-dropdown-menu');
-    const isOpen = menu.classList.contains('open');
+function showDeleteConfirm(id) {
+    document.getElementById('delete-confirm-id').value = id;
+    DashboardUtils.openModal('delete-confirm-modal');
+}
 
-    // Close all dropdowns first
-    document.querySelectorAll('.confirm-dropdown-menu.open').forEach(m => m.classList.remove('open'));
+function closeDeleteConfirm() {
+    DashboardUtils.closeModal('delete-confirm-modal');
+    document.getElementById('delete-confirm-id').value = '';
+}
 
-    // Toggle this one
-    if (!isOpen) {
-        menu.classList.add('open');
-    }
-
-    // Close when clicking outside
-    setTimeout(() => {
-        document.addEventListener('click', function closeDropdown(e) {
-            if (!dropdown.contains(e.target)) {
-                menu.classList.remove('open');
-                document.removeEventListener('click', closeDropdown);
-            }
-        });
-    }, 0);
+function confirmDeleteNow() {
+    const id = document.getElementById('delete-confirm-id').value;
+    closeDeleteConfirm();
+    if (id) deleteItem(id);
 }
 
 function currentConfig() {
