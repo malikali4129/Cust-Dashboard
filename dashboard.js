@@ -388,6 +388,18 @@ async function initDashboard(showLoading = true) {
         statsGrid.innerHTML = '<div class="panel-loading">Loading dashboard...</div>';
     }
 
+    // Check if truly online before attempting network requests
+    const isOnline = navigator.onLine;
+
+    if (!isOnline) {
+        // Offline - show banner and load from cache
+        const banner = document.getElementById('offline-banner');
+        if (banner) {
+            banner.innerHTML = '⚠️ Showing cached data — you are offline';
+            banner.classList.add('is-visible');
+        }
+    }
+
     try {
         await updateMeta();
         // Load settings + stats in parallel; gracefully degrade if either fails
@@ -429,6 +441,13 @@ async function initDashboard(showLoading = true) {
     } catch (error) {
         console.error('[initDashboard] Load failed:', error.message || error);
 
+        // Show offline banner - we'll still try to show cached data if available
+        const banner = document.getElementById('offline-banner');
+        if (banner && !navigator.onLine) {
+            banner.innerHTML = '⚠️ Showing cached data — you are offline';
+            banner.classList.add('is-visible');
+        }
+
         // Check for session expired / auth errors on initial load
         const errorMsg = error?.message || '';
         if (errorMsg.includes('Session expired') || errorMsg.includes('login') || errorMsg.includes('auth') || errorMsg.includes('refresh')) {
@@ -443,11 +462,10 @@ async function initDashboard(showLoading = true) {
             return;
         }
 
-        setServerLiveState(false);
-        if (statsGrid) {
-            statsGrid.innerHTML = `<div class="panel-loading error">${DashboardUtils.escapeHtml(error.message || 'Could not reach Supabase.')}</div>`;
+        // If network failed but we're not authenticated, don't show cached data warning
+        if (!errorMsg.includes('auth') && !errorMsg.includes('session')) {
+            DashboardUtils.showToast('Could not reach server. Showing cached data.', 'warning');
         }
-        DashboardUtils.showToast('Student data could not be loaded. ' + (error.message || ''), 'error');
         // Still start polling so the update prompt works when connection returns
         startUpdatePolling();
         initOfflineDetection();
@@ -558,6 +576,7 @@ function initOfflineDetection() {
 
     const goOffline = () => {
         if (banner) {
+            banner.innerHTML = '⚠️ Showing cached data — you are offline';
             banner.classList.add('is-visible');
         }
     };

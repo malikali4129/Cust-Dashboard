@@ -1829,11 +1829,13 @@ body.client-dashboard .dashboard-header {
 /* ---------- Offline Banner ---------- */
 .offline-banner {
   position: fixed;
-  top: var(--header-height);
-  left: 0;
-  right: 0;
+  top: calc(var(--header-height) + 20px);
+  left: 20px;
+  right: 20px;
+  max-width: 380px;
+  margin: 0 auto;
   background: var(--warning-soft);
-  border-bottom: 1px solid rgba(245, 158, 11, 0.3);
+  border: 1px solid rgba(245, 158, 11, 0.3);
   padding: var(--space-2) var(--space-4);
   text-align: center;
   font-size: 0.8125rem;
@@ -1841,6 +1843,7 @@ body.client-dashboard .dashboard-header {
   color: #fbbf24;
   z-index: 45;
   display: none;
+  border-radius: var(--radius-md);
 }
 
 .offline-banner.is-visible {
