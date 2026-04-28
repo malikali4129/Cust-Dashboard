@@ -34,7 +34,7 @@ const TAB_CONFIG = {
             date: new Date().toISOString()
         }),
         desktopRow: (item) => `
-            <tr>
+            <tr data-id="${item.id}">
                 <td>${DashboardUtils.escapeHtml(item.title)}</td>
                 <td>${DashboardUtils.escapeHtml(item.content)}</td>
                 <td><span class="badge badge-${item.priority}">${DashboardUtils.escapeHtml(item.priority)}</span></td>
@@ -99,7 +99,7 @@ const TAB_CONFIG = {
         },
         tempRecord: (payload) => ({ id: `temp-${Date.now()}`, ...payload }),
         desktopRow: (item) => `
-            <tr>
+            <tr data-id="${item.id}">
                 <td>${DashboardUtils.escapeHtml(item.title)}</td>
                 <td>${DashboardUtils.escapeHtml(item.subject || '-')}</td>
                 <td>${DashboardUtils.formatDateTime(item.deadline, adminState.timeZone)}</td>
@@ -168,7 +168,7 @@ const TAB_CONFIG = {
         },
         tempRecord: (payload) => ({ id: `temp-${Date.now()}`, ...payload }),
         desktopRow: (item) => `
-            <tr>
+            <tr data-id="${item.id}">
                 <td>${DashboardUtils.escapeHtml(item.title)}</td>
                 <td>${DashboardUtils.escapeHtml(item.category || '-')}</td>
                 <td>${DashboardUtils.formatDateTime(item.date, adminState.timeZone)}</td>
@@ -234,7 +234,7 @@ const TAB_CONFIG = {
         },
         tempRecord: (payload) => ({ id: `temp-${Date.now()}`, ...payload }),
         desktopRow: (item) => `
-            <tr>
+            <tr data-id="${item.id}">
                 <td>${DashboardUtils.escapeHtml(item.title)}</td>
                 <td>${DashboardUtils.escapeHtml(item.subject || '-')}</td>
                 <td>${DashboardUtils.formatDateTime(item.date, adminState.timeZone)}</td>
@@ -1418,6 +1418,18 @@ async function deleteItem(id) {
         return;
     }
 
+    // Add deleting class for animation to the row/card
+    const row = document.querySelector(`tr[data-id="${id}"`);
+    const card = document.querySelector(`.record-card[data-id="${id}"]`);
+    const target = row || card;
+    if (target) {
+        target.classList.add('deleting');
+    }
+
+    // Wait for animation
+    await new Promise(r => setTimeout(r, 400));
+
+    // Then remove from state
     const config = currentConfig();
     const previousItems = [...adminState.items];
     const removed = previousItems.find((item) => item.id === id);
@@ -1428,7 +1440,6 @@ async function deleteItem(id) {
     try {
         await config.remove(id);
         DashboardUtils.showToast('Deleted successfully.', 'success');
-        renderCurrentTab();
     } catch (error) {
         if (removed) {
             adminState.items = previousItems;

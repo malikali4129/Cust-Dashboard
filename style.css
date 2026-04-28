@@ -3,6 +3,16 @@
    Clean dark theme with violet accent
    ============================================ */
 
+/* Remove scrollbar from native app */
+* {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+*::-webkit-scrollbar {
+  display: none;
+}
+
 /* ---------- Design Tokens ---------- */
 :root {
   /* Backgrounds */
@@ -694,6 +704,19 @@ svg {
   border-color: var(--border-strong);
   transform: translateY(-2px);
   box-shadow: var(--shadow);
+}
+
+/* Delete animation - fade out and collapse */
+.record-card.deleting,
+tr.deleting {
+  animation: fade-out 400ms ease forwards;
+  pointer-events: none;
+}
+
+.record-card.deleting {
+  padding: 0;
+  margin: 0;
+  overflow: hidden;
 }
 
 .info-card.is-urgent {
@@ -1932,6 +1955,11 @@ body.client-dashboard .dashboard-header {
 @keyframes fade-in {
   from { opacity: 0; }
   to { opacity: 1; }
+}
+
+@keyframes fade-out {
+  from { opacity: 1; max-height: 200px; padding: var(--space-4); margin: var(--space-3) 0; }
+  to { opacity: 0; max-height: 0; padding: 0; margin: 0; overflow: hidden; }
 }
 
 @keyframes slide-up {
