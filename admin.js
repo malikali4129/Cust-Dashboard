@@ -285,7 +285,12 @@ function actionButtons(id) {
     return `
         <div class="table-actions">
             <button class="btn btn-secondary btn-sm" onclick="editItem('${id}')">Edit</button>
-            <button class="btn btn-danger btn-sm" onclick="deleteItem('${id}')">Delete</button>
+            <div class="confirm-dropdown">
+                <button class="btn btn-danger btn-sm dropdown-toggle" onclick="toggleConfirmDropdown(this)">Delete</button>
+                <div class="confirm-dropdown-menu">
+                    <button class="btn btn-danger btn-sm" onclick="deleteItem('${id}')">Confirm Delete</button>
+                </div>
+            </div>
         </div>
     `;
 }
@@ -294,9 +299,38 @@ function mobileActions(id) {
     return `
         <div class="record-card-actions">
             <button class="btn btn-secondary btn-sm" onclick="editItem('${id}')">Edit</button>
-            <button class="btn btn-danger btn-sm" onclick="deleteItem('${id}')">Delete</button>
+            <div class="confirm-dropdown">
+                <button class="btn btn-danger btn-sm dropdown-toggle" onclick="toggleConfirmDropdown(this)">Delete</button>
+                <div class="confirm-dropdown-menu">
+                    <button class="btn btn-danger btn-sm" onclick="deleteItem('${id}')">Confirm Delete</button>
+                </div>
+            </div>
         </div>
     `;
+}
+
+function toggleConfirmDropdown(btn) {
+    const dropdown = btn.closest('.confirm-dropdown');
+    const menu = dropdown.querySelector('.confirm-dropdown-menu');
+    const isOpen = menu.classList.contains('open');
+
+    // Close all dropdowns first
+    document.querySelectorAll('.confirm-dropdown-menu.open').forEach(m => m.classList.remove('open'));
+
+    // Toggle this one
+    if (!isOpen) {
+        menu.classList.add('open');
+    }
+
+    // Close when clicking outside
+    setTimeout(() => {
+        document.addEventListener('click', function closeDropdown(e) {
+            if (!dropdown.contains(e.target)) {
+                menu.classList.remove('open');
+                document.removeEventListener('click', closeDropdown);
+            }
+        });
+    }, 0);
 }
 
 function currentConfig() {
@@ -1410,11 +1444,6 @@ async function deleteItem(id) {
     const perms = await DashboardData.checkActionPermission();
     if (!perms.allowed) {
         DashboardUtils.showToast(perms.message, 'error');
-        return;
-    }
-
-    const confirmed = await DashboardUtils.confirmAction('Delete this record from Supabase?');
-    if (!confirmed) {
         return;
     }
 
