@@ -920,6 +920,61 @@ svg {
   box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
+/* Date/time input styling */
+input[type="datetime-local"],
+input[type="date"],
+input[type="time"] {
+  color-scheme: dark;
+  cursor: pointer;
+}
+
+input[type="datetime-local"]::-webkit-calendar-picker-indicator,
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+  cursor: pointer;
+  padding: 4px;
+  opacity: 0.6;
+  transition: opacity 0.2s;
+}
+
+input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover,
+input[type="date"]::-webkit-calendar-picker-indicator:hover,
+input[type="time"]::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
+}
+
+/* Custom date selects - compact single row */
+.date-selects-compact {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.date-selects-compact .form-input {
+  padding: 6px 4px;
+  font-size: 0.85rem;
+  text-align: center;
+  min-width: 0;
+}
+
+.date-selects-compact .form-input option {
+  background: var(--bg-elevated);
+  color: var(--text);
+  font-size: 0.85rem;
+}
+
+.date-selects-compact .date-sep {
+  color: var(--text-muted);
+  font-weight: 600;
+  opacity: 0.5;
+}
+
+.date-selects-compact .date-colon {
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
 .form-textarea {
   min-height: 120px;
   resize: vertical;
@@ -1257,15 +1312,26 @@ body.client-dashboard .dashboard-header {
 /* ---------- Toasts ---------- */
 .toast-container {
   position: fixed;
-  top: calc(var(--header-height) + var(--space-4));
-  right: var(--space-4);
+  top: 20px;
+  right: 20px;
+  left: 20px;
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
-  z-index: 9999;
+  gap: 10px;
+  z-index: 99999;
   pointer-events: none;
   max-width: 380px;
   width: 100%;
+  margin: 0 auto;
+  align-items: center;
+}
+
+@media (min-width: 640px) {
+  .toast-container {
+    left: auto;
+    margin: 0;
+    align-items: flex-end;
+  }
 }
 
 .toast {

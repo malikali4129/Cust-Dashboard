@@ -5,7 +5,12 @@
 const dashboardState = {
     timeZone: DashboardUtils.TIME_ZONE_LABEL,
     serverLive: false,
-    lastUpdated: null
+    lastUpdated: null,
+    counts: {
+        announcements: 0,
+        assignments: 0,
+        quizzes: 0
+    }
 };
 
 function renderStats(stats) {
@@ -377,9 +382,9 @@ async function submitFeedback() {
     }
 }
 
-async function initDashboard() {
+async function initDashboard(showLoading = true) {
     const statsGrid = document.getElementById('stats-grid');
-    if (statsGrid) {
+    if (statsGrid && showLoading) {
         statsGrid.innerHTML = '<div class="panel-loading">Loading dashboard...</div>';
     }
 
@@ -400,6 +405,12 @@ async function initDashboard() {
         if (statsResult.status === 'fulfilled') {
             renderStats(statsResult.value);
             setServerLiveState(true);
+            // Store counts for change detection
+            dashboardState.counts = {
+                announcements: statsResult.value.totalAnnouncements || 0,
+                assignments: statsResult.value.pendingAssignments || 0,
+                quizzes: statsResult.value.upcomingQuizzes || 0
+            };
         } else {
             console.warn('[initDashboard] getStats failed:', statsResult.reason?.message);
         }
@@ -417,6 +428,21 @@ async function initDashboard() {
         finalizeLoad();
     } catch (error) {
         console.error('[initDashboard] Load failed:', error.message || error);
+
+        // Check for session expired / auth errors on initial load
+        const errorMsg = error?.message || '';
+        if (errorMsg.includes('Session expired') || errorMsg.includes('login') || errorMsg.includes('auth') || errorMsg.includes('refresh')) {
+            sessionStorage.removeItem('admin_session');
+            document.body.innerHTML = `
+                <div style="display:flex;align-items:center;justify-content:center;min-height:100vh;flex-direction:column;gap:1rem;padding:2rem;text-align:center;background:#0b0f19;color:#f1f5f9;">
+                    <h2 style="color:#ef4444;">Session Expired</h2>
+                    <p>Please login again.</p>
+                    <a href="admin.html" style="padding:0.75rem 1.5rem;border-radius:8px;background:#8b5cf6;color:#fff;text-decoration:none;">Go to Login</a>
+                </div>
+            `;
+            return;
+        }
+
         setServerLiveState(false);
         if (statsGrid) {
             statsGrid.innerHTML = `<div class="panel-loading error">${DashboardUtils.escapeHtml(error.message || 'Could not reach Supabase.')}</div>`;
@@ -445,11 +471,14 @@ function finalizeLoad() {
 
 // ─── 15-second update polling ─────────────────────────────────────────────
 let updatePollingInterval = null;
+let pollingStarted = false;
 
 async function startUpdatePolling() {
-    if (updatePollingInterval) {
-        clearInterval(updatePollingInterval);
+    // Only start once
+    if (pollingStarted) {
+        return;
     }
+    pollingStarted = true;
 
     updatePollingInterval = setInterval(async () => {
         if (!navigator.onLine) {
@@ -464,27 +493,62 @@ async function startUpdatePolling() {
             if (dashboardState.lastUpdated !== null &&
                 currentLastUpdated !== null &&
                 currentLastUpdated !== dashboardState.lastUpdated) {
-                showUpdatePrompt();
-                clearInterval(updatePollingInterval);
+                // Get new stats to compare counts
+                const newStats = await DashboardData.getStats();
+                const newCounts = {
+                    announcements: newStats.totalAnnouncements || 0,
+                    assignments: newStats.pendingAssignments || 0,
+                    quizzes: newStats.upcomingQuizzes || 0
+                };
+
+                // Compare counts and show specific toasts
+                const changes = [];
+                if (newCounts.announcements > dashboardState.counts.announcements) {
+                    const diff = newCounts.announcements - dashboardState.counts.announcements;
+                    changes.push(`${diff} new announcement${diff > 1 ? 's' : ''}`);
+                }
+                if (newCounts.assignments > dashboardState.counts.assignments) {
+                    const diff = newCounts.assignments - dashboardState.counts.assignments;
+                    changes.push(`${diff} new assignment${diff > 1 ? 's' : ''}`);
+                }
+                if (newCounts.quizzes > dashboardState.counts.quizzes) {
+                    const diff = newCounts.quizzes - dashboardState.counts.quizzes;
+                    changes.push(`${diff} new quiz${diff > 1 ? 'zes' : ' added'}`);
+                }
+
+                // Show toasts for changes (max 2 toasts)
+                if (changes.length > 0) {
+                    for (const change of changes.slice(0, 2)) {
+                        DashboardUtils.showToast(change, 'success');
+                    }
+                } else {
+                    DashboardUtils.showToast('Dashboard updated', 'success');
+                }
+
+                // Update state and refresh dashboard
+                dashboardState.lastUpdated = currentLastUpdated;
+                dashboardState.counts = newCounts;
+
+                // Re-fetch data without showing preloader
+                await initDashboard(false);
             }
-        } catch (_) {
+        } catch (error) {
+            // Check for session expired / auth errors
+            const errorMsg = error?.message || '';
+            if (errorMsg.includes('Session expired') || errorMsg.includes('login') || errorMsg.includes('auth') || errorMsg.includes('refresh')) {
+                // Clear session from sessionStorage
+                sessionStorage.removeItem('admin_session');
+                DashboardUtils.showToast('Session expired. Please login again.', 'error');
+                // Redirect to admin login page
+                setTimeout(() => {
+                    window.location.href = 'admin.html';
+                }, 2000);
+                return;
+            }
             // Network error — ignore silently, next poll will retry
         }
-    }, 15000);
+    }, 5000);
 }
-
-function showUpdatePrompt() {
-    const overlay = document.getElementById('update-modal-overlay');
-    if (overlay) {
-        overlay.classList.add('active');
-    }
-}
-
-function applyDashboardUpdate() {
-    window.location.reload();
-}
-
-window.applyDashboardUpdate = applyDashboardUpdate;
 
 // ─── Offline detection ──────────────────────────────────────────────────────
 let isReloading = false;

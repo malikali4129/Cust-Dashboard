@@ -259,16 +259,182 @@ function toIsoFromLocalInput(value) {
 
 function toLocalInputValue(dateString) {
     if (!dateString) {
-        return '';
+        // Default to current date with year 2026
+        const now = new Date();
+        now.setFullYear(2026);
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        const hours = String(now.getHours()).padStart(2, '0');
+        const minutes = String(now.getMinutes()).padStart(2, '0');
+        return `${year}-${month}-${day}T${hours}:${minutes}`;
     }
 
     const date = new Date(dateString);
+    // Check if date is valid
+    if (isNaN(date.getTime())) {
+        // Default to 2026
+        const now = new Date();
+        now.setFullYear(2026);
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        const hours = String(now.getHours()).padStart(2, '0');
+        const minutes = String(now.getMinutes()).padStart(2, '0');
+        return `${year}-${month}-${day}T${hours}:${minutes}`;
+    }
+
+    // If date is in the past, default to 2026
+    const now = new Date();
+    if (date < now) {
+        date.setFullYear(2026);
+    }
+
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
     const hours = String(date.getHours()).padStart(2, '0');
     const minutes = String(date.getMinutes()).padStart(2, '0');
     return `${year}-${month}-${day}T${hours}:${minutes}`;
+}
+
+// Generate date dropdown selects (compact single row with time and AM/PM)
+function createDateSelects(name, dateString = null, defaultYear = 2026) {
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth() + 1;
+    const currentDay = now.getDate();
+
+    // Parse date if provided
+    let year = defaultYear;
+    let month = currentMonth;
+    let day = currentDay;
+    let hour = 12;
+    let minute = 0;
+    let ampm = 'PM';
+
+    if (dateString) {
+        const d = new Date(dateString);
+        if (!isNaN(d.getTime())) {
+            year = d.getFullYear();
+            month = d.getMonth() + 1;
+            day = d.getDate();
+            hour = d.getHours();
+            minute = d.getMinutes();
+            ampm = hour >= 12 ? 'PM' : 'AM';
+        }
+    }
+
+    // If date is in past, use default year
+    if (year < currentYear) {
+        year = defaultYear;
+    }
+
+    // Calculate days in month based on month/year
+    const getDaysInMonth = (m, y) => new Date(y, m, 0).getDate();
+    const maxDays = getDaysInMonth(month, year);
+    const days = Array.from({ length: maxDays }, (_, i) => String(i + 1).padStart(2, '0'));
+
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const years = [...new Set([defaultYear, currentYear, currentYear + 1])].sort((a, b) => a - b).slice(0, 4);
+
+    // Hours 1-12 for 12-hour format
+    const hour12 = hour % 12 || 12;
+    const hours = Array.from({ length: 12 }, (_, i) => String(i + 1));
+    const minutes = Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0'));
+
+    // Build select options - no placeholders
+    const dayOptions = days.map(d => `<option value="${d}" ${d === String(day).padStart(2, '0') ? 'selected' : ''}>${d}</option>`).join('');
+    const monthOptions = months.map((m, i) => `<option value="${String(i + 1).padStart(2, '0')}" ${i + 1 === month ? 'selected' : ''}>${m}</option>`).join('');
+    const yearOptions = years.map(y => `<option value="${y}" ${y === year ? 'selected' : ''}>${y}</option>`).join('');
+    const hourOptions = hours.map(h => `<option value="${h}" ${h === String(hour12) ? 'selected' : ''}>${h}</option>`).join('');
+    const minuteOptions = minutes.map(m => `<option value="${m}" ${m === String(Math.floor(minute / 15) * 15).padStart(2, '0') ? 'selected' : ''}>${m}</option>`).join('');
+    const ampmOptions = `<option value="AM" ${ampm === 'AM' ? 'selected' : ''}>AM</option><option value="PM" ${ampm === 'PM' ? 'selected' : ''}>PM</option>`;
+
+    return `
+        <div class="date-selects-compact">
+            <select class="form-input" name="${name}_day">${dayOptions}</select>
+            <select class="form-input" name="${name}_month">${monthOptions}</select>
+            <select class="form-input" name="${name}_year">${yearOptions}</select>
+            <span class="date-sep">@</span>
+            <select class="form-input" name="${name}_hour">${hourOptions}</select>
+            <span class="date-colon">:</span>
+            <select class="form-input" name="${name}_minute">${minuteOptions}</select>
+            <select class="form-input" name="${name}_ampm">${ampmOptions}</select>
+        </div>
+    `;
+}
+
+// Helper to combine date select values to ISO string
+// Accepts either a form element or a plain object with field values
+function combineDateSelects(formOrData, name) {
+    // Get values - handle both form element and plain object
+    let day, month, year, hour, minute, ampm;
+
+    if (typeof formOrData.querySelector === 'function') {
+        // It's a DOM form element
+        const dayEl = formOrData.querySelector(`[name="${name}_day"]`);
+        const monthEl = formOrData.querySelector(`[name="${name}_month"]`);
+        const yearEl = formOrData.querySelector(`[name="${name}_year"]`);
+        const hourEl = formOrData.querySelector(`[name="${name}_hour"]`);
+        const minuteEl = formOrData.querySelector(`[name="${name}_minute"]`);
+        const ampmEl = formOrData.querySelector(`[name="${name}_ampm"]`);
+
+        day = dayEl?.value;
+        month = monthEl?.value;
+        year = yearEl?.value;
+        hour = hourEl?.value ? parseInt(hourEl.value) : 12;
+        minute = minuteEl?.value ? parseInt(minuteEl.value) : 0;
+        ampm = ampmEl?.value || 'PM';
+    } else {
+        // It's a plain object - get dropdown values
+        day = formOrData[`${name}_day`];
+        month = formOrData[`${name}_month`];
+        year = formOrData[`${name}_year`];
+        hour = formOrData[`${name}_hour`] ? parseInt(formOrData[`${name}_hour`]) : 12;
+        minute = formOrData[`${name}_minute`] ? parseInt(formOrData[`${name}_minute`]) : 0;
+        ampm = formOrData[`${name}_ampm`] || 'PM';
+
+        // If no dropdown values, check for existing date field
+        if (!day && formOrData[name]) {
+            const existingDate = new Date(formOrData[name]);
+            if (!isNaN(existingDate.getTime())) {
+                year = existingDate.getFullYear();
+                month = existingDate.getMonth() + 1;
+                day = existingDate.getDate();
+                hour = existingDate.getHours();
+                minute = existingDate.getMinutes();
+                ampm = hour >= 12 ? 'PM' : 'AM';
+            }
+        }
+    }
+
+    // Validate - all required
+    if (!day || !month || !year || !hour) {
+        // Return default if missing
+        const d = new Date();
+        d.setFullYear(2026);
+        d.setMonth(0);
+        d.setDate(1);
+        d.setHours(12, 0, 0, 0);
+        return d.toISOString();
+    }
+
+    // Convert to 24-hour format
+    let hour24 = hour;
+    if (ampm === 'PM' && hour < 12) hour24 = hour + 12;
+    if (ampm === 'AM' && hour === 12) hour24 = 0;
+
+    // Create date using local time (no timezone)
+    const date = new Date(year, month - 1, day, hour24, minute, 0, 0);
+
+    // Check if date is in the past (return error object if so)
+    const now = new Date();
+    if (date < now) {
+        return { error: 'past', date: date.toISOString() };
+    }
+
+    return date.toISOString();
 }
 
 function confirmAction(message) {
@@ -501,6 +667,8 @@ window.DashboardUtils = {
     getRelativeTime,
     toIsoFromLocalInput,
     toLocalInputValue,
+    createDateSelects,
+    combineDateSelects,
     confirmAction,
     downloadJSON,
     readFile,

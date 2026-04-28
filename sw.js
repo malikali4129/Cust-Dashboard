@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'v17';
+const CACHE_VERSION = 'v19';
 const SHELL_CACHE = `dashboard-shell-${CACHE_VERSION}`;
 const FONT_CACHE = `dashboard-fonts-${CACHE_VERSION}`;
 const DATA_CACHE = `dashboard-data-${CACHE_VERSION}`;
@@ -74,9 +74,9 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
-    // Supabase API requests: cache-first with network fallback
+    // Supabase API requests: network-first to get fresh data
     if (url.host.includes('supabase') || url.pathname.startsWith('/rest/v1/')) {
-        event.respondWith(cacheFirstWithFallback(event.request, DATA_CACHE));
+        event.respondWith(networkFirst(event.request, DATA_CACHE));
         return;
     }
 
@@ -154,6 +154,28 @@ async function cacheFirstWithFallback(request, cacheName) {
         return response;
     } catch (_) {
         // Return a minimal empty array JSON if truly offline with no cache
+        return new Response(JSON.stringify([]), {
+            headers: { 'Content-Type': 'application/json' }
+        });
+    }
+}
+
+// Network-first for API data: try network, fall back to cache
+async function networkFirst(request, cacheName) {
+    try {
+        const response = await fetch(request);
+        if (response.ok) {
+            const cache = await caches.open(cacheName);
+            cache.put(request, response.clone());
+        }
+        return response;
+    } catch (_) {
+        // Fall back to cache
+        const cache = await caches.open(cacheName);
+        const cached = await cache.match(request);
+        if (cached) {
+            return cached;
+        }
         return new Response(JSON.stringify([]), {
             headers: { 'Content-Type': 'application/json' }
         });

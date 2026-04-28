@@ -80,13 +80,23 @@ const TAB_CONFIG = {
         create: DashboardData.addAssignment,
         update: DashboardData.updateAssignment,
         remove: DashboardData.deleteAssignment,
-        toPayload: (formData) => ({
-            title: formData.title.trim(),
-            subject: formData.subject.trim(),
-            description: formData.description.trim(),
-            deadline: DashboardUtils.toIsoFromLocalInput(formData.deadline),
-            status: formData.status
-        }),
+        toPayload: (formData) => {
+            // Get form element to query select values directly
+            const form = document.getElementById('item-form');
+            const deadlineResult = form
+                ? DashboardUtils.combineDateSelects(form, 'deadline')
+                : DashboardUtils.combineDateSelects(formData, 'deadline');
+            if (deadlineResult && deadlineResult.error === 'past') {
+                throw new Error('Date & time cannot be in the past');
+            }
+            return {
+                title: formData.title.trim(),
+                subject: formData.subject.trim(),
+                description: formData.description.trim(),
+                deadline: deadlineResult,
+                status: formData.status
+            };
+        },
         tempRecord: (payload) => ({ id: `temp-${Date.now()}`, ...payload }),
         desktopRow: (item) => `
             <tr>
@@ -125,7 +135,7 @@ const TAB_CONFIG = {
                 </label>
                 <label class="field">
                     <span>Deadline</span>
-                    <input class="form-input" type="datetime-local" name="deadline" value="${DashboardUtils.toLocalInputValue(item.deadline)}" required>
+                    ${DashboardUtils.createDateSelects('deadline', item.deadline)}
                 </label>
                 <label class="field">
                     <span>Status</span>
@@ -144,12 +154,18 @@ const TAB_CONFIG = {
         create: DashboardData.addDeadline,
         update: DashboardData.updateDeadline,
         remove: DashboardData.deleteDeadline,
-        toPayload: (formData) => ({
-            title: formData.title.trim(),
-            category: formData.category.trim(),
-            date: DashboardUtils.toIsoFromLocalInput(formData.date),
-            priority: formData.priority
-        }),
+        toPayload: (formData) => {
+            const form = document.getElementById('item-form');
+            const dateResult = form
+                ? DashboardUtils.combineDateSelects(form, 'date')
+                : DashboardUtils.combineDateSelects(formData, 'date');
+            return {
+                title: formData.title.trim(),
+                category: formData.category.trim(),
+                date: dateResult,
+                priority: formData.priority
+            };
+        },
         tempRecord: (payload) => ({ id: `temp-${Date.now()}`, ...payload }),
         desktopRow: (item) => `
             <tr>
@@ -183,7 +199,7 @@ const TAB_CONFIG = {
                 </label>
                 <label class="field">
                     <span>Date and time</span>
-                    <input class="form-input" type="datetime-local" name="date" value="${DashboardUtils.toLocalInputValue(item.date)}" required>
+                    ${DashboardUtils.createDateSelects('date', item.date)}
                 </label>
                 <label class="field">
                     <span>Priority</span>
@@ -203,13 +219,19 @@ const TAB_CONFIG = {
         create: DashboardData.addQuiz,
         update: DashboardData.updateQuiz,
         remove: DashboardData.deleteQuiz,
-        toPayload: (formData) => ({
-            title: formData.title.trim(),
-            subject: formData.subject.trim(),
-            date: DashboardUtils.toIsoFromLocalInput(formData.date),
-            duration: Number(formData.duration),
-            totalMarks: formData.totalMarks ? Number(formData.totalMarks) : null
-        }),
+        toPayload: (formData) => {
+            const form = document.getElementById('item-form');
+            const dateResult = form
+                ? DashboardUtils.combineDateSelects(form, 'date')
+                : DashboardUtils.combineDateSelects(formData, 'date');
+            return {
+                title: formData.title.trim(),
+                subject: formData.subject.trim(),
+                date: dateResult,
+                duration: Number(formData.duration),
+                totalMarks: formData.totalMarks ? Number(formData.totalMarks) : null
+            };
+        },
         tempRecord: (payload) => ({ id: `temp-${Date.now()}`, ...payload }),
         desktopRow: (item) => `
             <tr>
@@ -244,7 +266,7 @@ const TAB_CONFIG = {
                 </label>
                 <label class="field">
                     <span>Date and time</span>
-                    <input class="form-input" type="datetime-local" name="date" value="${DashboardUtils.toLocalInputValue(item.date)}" required>
+                    ${DashboardUtils.createDateSelects('date', item.date)}
                 </label>
                 <label class="field">
                     <span>Duration</span>
@@ -1296,10 +1318,16 @@ async function saveItem() {
         if (subjectError) errors.push(`Subject/Category: ${subjectError}`);
     }
 
-    const dateField = formData.deadline || formData.date;
+    const dateField = formData.deadline_day || formData.date_day;
     if (dateField) {
-        const yearError = DashboardUtils.validateYear(DashboardUtils.toIsoFromLocalInput(dateField));
-        if (yearError) errors.push(`Date: ${yearError}`);
+        const dateName = formData.deadline_day ? 'deadline' : 'date';
+        const dateResult = DashboardUtils.combineDateSelects(formData, dateName);
+        if (dateResult && dateResult.error === 'past') {
+            errors.push('Date & time cannot be in the past');
+        } else if (dateResult) {
+            const yearError = DashboardUtils.validateYear(dateResult);
+            if (yearError) errors.push(`Date: ${yearError}`);
+        }
     }
 
     if (formData.duration) {
@@ -1317,7 +1345,18 @@ async function saveItem() {
         return;
     }
 
-    const payload = currentConfig().toPayload(formData);
+    let payload;
+    try {
+        payload = currentConfig().toPayload(formData);
+    } catch (err) {
+        // Try toast, fall back to alert
+        if (typeof DashboardUtils?.showToast === 'function') {
+            DashboardUtils.showToast(err.message, 'error');
+        } else {
+            alert(err.message);
+        }
+        return;
+    }
     const config = currentConfig();
 
     if (!navigator.onLine) {
