@@ -549,7 +549,30 @@ async function registerServiceWorker() {
     }
 
     try {
-        await navigator.serviceWorker.register('./sw.js');
+        const registration = await navigator.serviceWorker.register('./sw.js');
+
+        // Listen for updates
+        registration.addEventListener('updatefound', () => {
+            const newWorker = registration.installing;
+            if (newWorker) {
+                newWorker.addEventListener('statechange', () => {
+                    // When new worker is installed, activate it immediately
+                    if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                        // Show toast that update is ready
+                        if (typeof DashboardUtils?.showToast === 'function') {
+                            DashboardUtils.showToast('Update available. Refreshing...', 'info');
+                        }
+                        // Reload to get new version
+                        setTimeout(() => window.location.reload(), 1500);
+                    }
+                });
+            }
+        });
+
+        // Check if there's already a waiting worker (update available)
+        if (registration.waiting) {
+            registration.waiting.postMessage('skipWaiting');
+        }
     } catch (error) {
         console.warn('Service worker registration failed:', error);
     }

@@ -55,6 +55,13 @@ self.addEventListener('activate', (event) => {
     self.clients.claim();
 });
 
+// Handle messages from client (e.g., skip waiting and activate new version)
+self.addEventListener('message', (event) => {
+    if (event.data === 'skipWaiting') {
+        self.skipWaiting();
+    }
+});
+
 // ─── Fetch: handle different request types ──────────────────────────────────
 self.addEventListener('fetch', (event) => {
     if (event.request.method !== 'GET') {
