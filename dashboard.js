@@ -1,5 +1,6 @@
 /**
  * University Dashboard - Student dashboard
+ * Uses OfflineManager for offline-first data loading
  */
 
 const dashboardState = {
@@ -388,89 +389,44 @@ async function initDashboard(showLoading = true) {
         statsGrid.innerHTML = '<div class="panel-loading">Loading dashboard...</div>';
     }
 
-    // Check if truly online before attempting network requests
-    const isOnline = navigator.onLine;
+    // ─── OFFLINE-FIRST: Load cached data first, then fetch fresh in background ───
+    // This ensures we never show empty state if cached data exists
+    await OfflineManager.init({
+        loadStats: true,
+        loadAnnouncements: true,
+        loadAssignments: true,
+        loadDeadlines: true,
+        loadQuizzes: true
+    });
 
-    if (!isOnline) {
-        // Offline - show banner and load from cache
-        const banner = document.getElementById('offline-banner');
-        if (banner) {
-            banner.innerHTML = '⚠️ Showing cached data — you are offline';
-            banner.classList.add('is-visible');
-        }
-    }
-
+    // After OfflineManager.init(), UI is already populated with cached data
+    // Get fresh stats for state tracking
     try {
         await updateMeta();
-        // Load settings + stats in parallel; gracefully degrade if either fails
-        const [settingsResult, statsResult] = await Promise.allSettled([
-            DashboardData.getSettings(),
-            DashboardData.getStats()
-        ]);
-
-        if (settingsResult.status === 'fulfilled') {
-            dashboardState.lastUpdated = settingsResult.value.lastUpdated || null;
-        } else {
-            console.warn('[initDashboard] getSettings failed:', settingsResult.reason?.message);
-        }
-
-        if (statsResult.status === 'fulfilled') {
-            renderStats(statsResult.value);
-            setServerLiveState(true);
-            // Store counts for change detection
-            dashboardState.counts = {
-                announcements: statsResult.value.totalAnnouncements || 0,
-                assignments: statsResult.value.pendingAssignments || 0,
-                quizzes: statsResult.value.upcomingQuizzes || 0
-            };
-        } else {
-            console.warn('[initDashboard] getStats failed:', statsResult.reason?.message);
-        }
-
-        await Promise.all([
-            renderSection(renderAnnouncements, () => DashboardData.getAnnouncements({ limit: 5 }), 'announcements-list'),
-            renderSection(renderAssignments, () => DashboardData.getAssignments({ limit: 4 }), 'assignments-list'),
-            renderSection(renderDeadlines, () => DashboardData.getDeadlines({ limit: 5 }), 'deadlines-list'),
-            renderSection(renderQuizzes, () => DashboardData.getQuizzes({ limit: 4 }), 'quizzes-list')
-        ]);
-
-        // Start update polling + offline detection only after initial load
-        startUpdatePolling();
-        initOfflineDetection();
-        finalizeLoad();
+        const statsResult = await DashboardData.getStats();
+        renderStats(statsResult);
+        setServerLiveState(true);
+        // Store counts for change detection
+        dashboardState.counts = {
+            announcements: statsResult.totalAnnouncements || 0,
+            assignments: statsResult.pendingAssignments || 0,
+            quizzes: statsResult.upcomingQuizzes || 0
+        };
     } catch (error) {
-        console.error('[initDashboard] Load failed:', error.message || error);
-
-        // Show offline banner - we'll still try to show cached data if available
-        const banner = document.getElementById('offline-banner');
-        if (banner && !navigator.onLine) {
-            banner.innerHTML = '⚠️ Showing cached data — you are offline';
-            banner.classList.add('is-visible');
-        }
-
-        // Check for session expired / auth errors on initial load
-        const errorMsg = error?.message || '';
-        if (errorMsg.includes('Session expired') || errorMsg.includes('login') || errorMsg.includes('auth') || errorMsg.includes('refresh')) {
-            sessionStorage.removeItem('admin_session');
-            document.body.innerHTML = `
-                <div style="display:flex;align-items:center;justify-content:center;min-height:100vh;flex-direction:column;gap:1rem;padding:2rem;text-align:center;background:#0b0f19;color:#f1f5f9;">
-                    <h2 style="color:#ef4444;">Session Expired</h2>
-                    <p>Please login again.</p>
-                    <a href="admin.html" style="padding:0.75rem 1.5rem;border-radius:8px;background:#8b5cf6;color:#fff;text-decoration:none;">Go to Login</a>
-                </div>
-            `;
-            return;
-        }
-
-        // If network failed but we're not authenticated, don't show cached data warning
-        if (!errorMsg.includes('auth') && !errorMsg.includes('session')) {
-            DashboardUtils.showToast('Could not reach server. Showing cached data.', 'warning');
-        }
-        // Still start polling so the update prompt works when connection returns
-        startUpdatePolling();
-        initOfflineDetection();
-        finalizeLoad();
+        console.warn('[initDashboard] Could not load stats:', error.message);
     }
+
+    // Load content sections (DashboardData uses its own offline fallback)
+    await Promise.all([
+        renderSection(renderAnnouncements, () => DashboardData.getAnnouncements({ limit: 5 }), 'announcements-list'),
+        renderSection(renderAssignments, () => DashboardData.getAssignments({ limit: 4 }), 'assignments-list'),
+        renderSection(renderDeadlines, () => DashboardData.getDeadlines({ limit: 5 }), 'deadlines-list'),
+        renderSection(renderQuizzes, () => DashboardData.getQuizzes({ limit: 4 }), 'quizzes-list')
+    ]);
+
+    // Start update polling for detecting new content
+    startUpdatePolling();
+    finalizeLoad();
 }
 
 function finalizeLoad() {
