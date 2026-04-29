@@ -416,13 +416,17 @@ async function initDashboard(showLoading = true) {
         console.warn('[initDashboard] Could not load stats:', error.message);
     }
 
-    // Load content sections (DashboardData uses its own offline fallback)
-    await Promise.all([
-        renderSection(renderAnnouncements, () => DashboardData.getAnnouncements({ limit: 5 }), 'announcements-list'),
-        renderSection(renderAssignments, () => DashboardData.getAssignments({ limit: 4 }), 'assignments-list'),
-        renderSection(renderDeadlines, () => DashboardData.getDeadlines({ limit: 5 }), 'deadlines-list'),
-        renderSection(renderQuizzes, () => DashboardData.getQuizzes({ limit: 4 }), 'quizzes-list')
-    ]);
+    // Load content sections - only when online to avoid overwriting cached UI
+    if (navigator.onLine) {
+        await Promise.all([
+            renderSection(renderAnnouncements, () => DashboardData.getAnnouncements({ limit: 5 }), 'announcements-list'),
+            renderSection(renderAssignments, () => DashboardData.getAssignments({ limit: 4 }), 'assignments-list'),
+            renderSection(renderDeadlines, () => DashboardData.getDeadlines({ limit: 5 }), 'deadlines-list'),
+            renderSection(renderQuizzes, () => DashboardData.getQuizzes({ limit: 4 }), 'quizzes-list')
+        ]);
+    } else {
+        console.log('[initDashboard] Offline - using cached UI data');
+    }
 
     // Start update polling for detecting new content
     startUpdatePolling();

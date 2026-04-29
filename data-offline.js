@@ -30,10 +30,45 @@
     }
 
     const OfflineManager = {
+        cache: {},
+
+        /**
+         * 🔧 FIX 3: Initialize cache from localStorage on load
+         */
+        initCache() {
+            try {
+                const cached = localStorage.getItem('app_cache');
+                if (cached) {
+                    this.cache = JSON.parse(cached);
+                    console.log('[OfflineManager] Cache initialized');
+                }
+            } catch (err) {
+                console.warn('[OfflineManager] Cache init failed:', err.message);
+                this.cache = {};
+            }
+        },
+
+        /**
+         * 🔧 FIX 1: Get cached data by key
+         */
+        get(key) {
+            return this.cache[key] || [];
+        },
+
+        /**
+         * Check if key has cached data
+         */
+        has(key) {
+            return key in this.cache && Array.isArray(this.cache[key]) && this.cache[key].length > 0;
+        },
+
         /**
          * Initialize - loads cached data first, then fetches fresh data if online
          */
         async init(options = {}) {
+            // 🔧 FIX 3: Auto-initialize cache from localStorage
+            this.initCache();
+
             const opts = {
                 loadStats: true,
                 loadAnnouncements: true,
@@ -78,7 +113,10 @@
          * Fetch fresh data from Supabase and cache it
          */
         async fetchAndCacheData(options = {}) {
-            if (!navigator.onLine) return;
+            if (!navigator.onLine) {
+                console.log('[OfflineManager] Offline - skipping fetch');
+                return;
+            }
 
             console.log('[OfflineManager] Fetching fresh data...');
 
@@ -91,13 +129,23 @@
                     DashboardData.getQuizzes()
                 ]);
 
+                // 🔧 FIX 2: Store structured cache for easy retrieval
+                const cacheData = {
+                    stats,
+                    announcements,
+                    assignments,
+                    deadlines,
+                    quizzes
+                };
+                localStorage.setItem('app_cache', JSON.stringify(cacheData));
+
                 updateStatsUI(stats);
                 updateAnnouncementsUI(announcements);
                 updateAssignmentsUI(assignments);
                 updateDeadlinesUI(deadlines);
                 updateQuizzesUI(quizzes);
                 updateConnectionUI(true);
-                console.log('[OfflineManager] Data updated from network');
+                console.log('[OfflineManager] Data updated and cached');
             } catch (err) {
                 console.warn('[OfflineManager] Fetch failed:', err.message);
             }
