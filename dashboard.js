@@ -172,11 +172,21 @@ async function updateMeta() {
         DashboardUtils.setActiveTimeZone(dashboardState.timeZone);
 
         const updated = document.getElementById('last-updated');
+        // Prefer the data-layer connectivity flag when available
+        const online = (typeof window.DashboardOnline !== 'undefined') ? !!window.DashboardOnline : navigator.onLine;
+        // If offline (data-layer or browser), show a clear offline indicator
+        if (!online) {
+            if (updated) updated.textContent = 'Offline';
+            setServerLiveState(false);
+            return;
+        }
+
         if (updated) {
             updated.textContent = settings.lastUpdated
                 ? DashboardUtils.getRelativeTime(settings.lastUpdated)
                 : 'Pending';
         }
+        setServerLiveState(online);
     } catch (error) {
         console.warn('[updateMeta] Settings fetch failed:', error.message);
         DashboardUtils.setActiveTimeZone(DashboardUtils.TIME_ZONE_LABEL);
@@ -213,7 +223,7 @@ async function refreshDashboard() {
     await updateMeta();
     const statsResult = await DashboardData.getStats();
     renderStats(statsResult);
-    setServerLiveState(true);
+        setServerLiveState(typeof window.DashboardOnline !== 'undefined' ? !!window.DashboardOnline : navigator.onLine);
     // Reload all sections
     renderSection(renderAnnouncements, () => DashboardData.getAnnouncements({ limit: 5 }), 'announcements-list');
     renderSection(renderAssignments, () => DashboardData.getAssignments({ limit: 4 }), 'assignments-list');
@@ -363,7 +373,8 @@ async function submitFeedback() {
         return;
     }
 
-    if (!navigator.onLine) {
+    const feedbackOnline = (typeof window.DashboardOnline !== 'undefined') ? !!window.DashboardOnline : navigator.onLine;
+    if (!feedbackOnline) {
         DashboardUtils.showToast('You are offline. Feedback requires a connection.', 'warning');
         return;
     }
@@ -405,7 +416,7 @@ async function initDashboard(showLoading = true) {
         await updateMeta();
         const statsResult = await DashboardData.getStats();
         renderStats(statsResult);
-        setServerLiveState(true);
+            setServerLiveState(typeof window.DashboardOnline !== 'undefined' ? !!window.DashboardOnline : navigator.onLine);
         // Store counts for change detection
         dashboardState.counts = {
             announcements: statsResult.totalAnnouncements || 0,
@@ -416,8 +427,9 @@ async function initDashboard(showLoading = true) {
         console.warn('[initDashboard] Could not load stats:', error.message);
     }
 
-    // Load content sections - only when online to avoid overwriting cached UI
-    if (navigator.onLine) {
+    // Load content sections - only when online (data-layer aware) to avoid overwriting cached UI
+    const sectionsOnline = (typeof window.DashboardOnline !== 'undefined') ? !!window.DashboardOnline : navigator.onLine;
+    if (sectionsOnline) {
         await Promise.all([
             renderSection(renderAnnouncements, () => DashboardData.getAnnouncements({ limit: 5 }), 'announcements-list'),
             renderSection(renderAssignments, () => DashboardData.getAssignments({ limit: 4 }), 'assignments-list'),
@@ -459,7 +471,8 @@ async function startUpdatePolling() {
     pollingStarted = true;
 
     updatePollingInterval = setInterval(async () => {
-        if (!navigator.onLine) {
+        const pollingOnline = (typeof window.DashboardOnline !== 'undefined') ? !!window.DashboardOnline : navigator.onLine;
+        if (!pollingOnline) {
             return; // Skip polling while offline
         }
 
@@ -528,39 +541,7 @@ async function startUpdatePolling() {
     }, 5000);
 }
 
-// ─── Offline detection ──────────────────────────────────────────────────────
-let isReloading = false;
-
-function initOfflineDetection() {
-    const banner = document.getElementById('offline-banner');
-
-    const goOffline = () => {
-        if (banner) {
-            banner.innerHTML = '⚠️ Showing cached data — you are offline';
-            banner.classList.add('is-visible');
-        }
-    };
-
-    const goOnline = () => {
-        if (isReloading) return;
-        if (banner) {
-            banner.classList.remove('is-visible');
-        }
-        // Show "Back online" toast and reload to refresh data
-        DashboardUtils.showToast('Back online — restarting to refresh data...', 'success');
-        isReloading = true;
-        setTimeout(() => {
-            window.location.reload();
-        }, 1500);
-    };
-
-    if (!navigator.onLine) {
-        goOffline();
-    }
-
-    window.addEventListener('offline', goOffline);
-    window.addEventListener('online', goOnline);
-}
+// Offline detection handled centrally in script.js initConnectivity
 
 document.addEventListener('DOMContentLoaded', () => {
     initDashboard();

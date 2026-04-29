@@ -513,7 +513,7 @@ function validateNumber(value, min, max) {
 }
 
 function updateConnectivityUI() {
-    const online = navigator.onLine;
+    const online = (typeof window.DashboardOnline !== 'undefined') ? !!window.DashboardOnline : navigator.onLine;
     document.body.classList.toggle('is-offline', !online);
     document.querySelectorAll('[data-connection-state]').forEach((element) => {
         element.textContent = online ? 'Online' : 'Offline';
@@ -530,13 +530,58 @@ function updateConnectivityUI() {
 
 function initConnectivity() {
     updateConnectivityUI();
+
+    // Reflect initial offline banner/server state immediately (prefer data-layer flag)
+    const banner = document.getElementById('offline-banner');
+    const initialOnline = (typeof window.DashboardOnline !== 'undefined') ? !!window.DashboardOnline : navigator.onLine;
+    if (!initialOnline) {
+        if (banner) {
+            banner.innerHTML = '⚠️ Showing cached data — you are offline';
+            banner.classList.add('is-visible');
+        }
+        const serverDot = document.getElementById('server-dot');
+        if (serverDot) serverDot.classList.remove('live');
+        const updated = document.getElementById('last-updated');
+        if (updated) updated.textContent = 'Offline';
+    }
+
     window.addEventListener('online', () => {
         updateConnectivityUI();
+        // Hide offline banner if present
+        const banner = document.getElementById('offline-banner');
+        if (banner) banner.classList.remove('is-visible');
+
+        // Indicate syncing; the data-layer will mark the server live when fetch succeeds
+        const serverDot = document.getElementById('server-dot');
+        if (serverDot) serverDot.classList.remove('live');
+        const updated = document.getElementById('last-updated');
+        if (updated) updated.textContent = 'Syncing...';
+
+        // Show a single 'Connection restored' toast and record timestamp to avoid duplicates
         showToast('Connection restored.', 'success');
+        window._lastConnectionToastTimestamp = Date.now();
+
+        // Trigger data refresh in the offline manager (if available)
+        try {
+            if (window.OfflineManager && typeof window.OfflineManager.fetchAndCacheData === 'function') {
+                window.OfflineManager.fetchAndCacheData().catch(() => {});
+            }
+        } catch (e) {}
     });
+
     window.addEventListener('offline', () => {
         updateConnectivityUI();
+        const serverDot = document.getElementById('server-dot');
+        if (serverDot) serverDot.classList.remove('live');
+        const updated = document.getElementById('last-updated');
+        if (updated) updated.textContent = 'Offline';
+        const banner = document.getElementById('offline-banner');
+        if (banner) {
+            banner.innerHTML = '⚠️ Showing cached data — you are offline';
+            banner.classList.add('is-visible');
+        }
         showToast('You are offline. Cloud writes are paused.', 'warning');
+        window._lastConnectionToastTimestamp = 0;
     });
 }
 

@@ -587,9 +587,11 @@ async function getSettings() {
         // Cache to localStorage
         setLocalCache('settings', result);
 
+        try { window.DashboardOnline = true; } catch (e) {}
         return result;
     } catch (err) {
-        // If fetching settings failed, prefer local cache when available
+        // On failure, mark data-layer offline and prefer local cache when available
+        try { window.DashboardOnline = false; } catch (e) {}
         const cached = getLocalCacheData('settings');
         if (cached) {
             console.warn('[getSettings] Fetch failed - using cached settings:', err?.message || err);
@@ -1034,7 +1036,10 @@ async function getLogActions() {
 async function getStats() {
     const nowIso = new Date().toISOString();
 
+    // Assume online until a fetch fails; this flag will be updated on error
     try {
+        window.DashboardOnline = true;
+
         const [
             totalAnnouncements,
             totalAssignments,
@@ -1066,9 +1071,12 @@ async function getStats() {
         // Cache to localStorage
         setLocalCache('stats', result);
 
+        // Indicate we successfully retrieved fresh stats
+        window.DashboardOnline = true;
         return result;
     } catch (err) {
-        // On any failure, prefer cached stats when available
+        // On any failure, mark offline and prefer cached stats when available
+        window.DashboardOnline = false;
         const cached = getLocalCacheData('stats');
         if (cached) {
             console.warn('[getStats] Fetch failed - using cached stats:', err?.message || err);

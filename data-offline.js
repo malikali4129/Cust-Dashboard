@@ -31,6 +31,7 @@
 
     const OfflineManager = {
         cache: {},
+        _isFetching: false,
 
         /**
          * 🔧 FIX 3: Initialize cache from localStorage on load
@@ -182,8 +183,9 @@
                 updateQuizzesUI(quizzesCached);
             }
 
-            // Fetch fresh if online
-            if (navigator.onLine) {
+            // Fetch fresh if online (prefer data-layer flag)
+            const online = (typeof window.DashboardOnline !== 'undefined') ? !!window.DashboardOnline : navigator.onLine;
+            if (online) {
                 console.log('[OfflineManager] Online - fetching fresh data...');
                 this.fetchAndCacheData(opts);
             } else {
@@ -196,11 +198,19 @@
          * Fetch fresh data from Supabase and cache it
          */
         async fetchAndCacheData(options = {}) {
+            const prevOnline = (typeof window.DashboardOnline !== 'undefined') ? !!window.DashboardOnline : false;
+
             if (!navigator.onLine) {
                 console.log('[OfflineManager] Offline - skipping fetch');
                 return;
             }
 
+            if (this._isFetching) {
+                console.log('[OfflineManager] Fetch already in progress - skipping');
+                return;
+            }
+
+            this._isFetching = true;
             console.log('[OfflineManager] Fetching fresh data...');
 
             try {
@@ -212,15 +222,13 @@
                     DashboardData.getQuizzes()
                 ]);
 
-                // 🔧 FIX 2: Store structured cache for easy retrieval
-                const cacheData = {
-                    stats,
-                    announcements,
-                    assignments,
-                    deadlines,
-                    quizzes
-                };
-                localStorage.setItem('app_cache', JSON.stringify(cacheData));
+                // Store structured cache for easy retrieval
+                const cacheData = { stats, announcements, assignments, deadlines, quizzes };
+                try {
+                    localStorage.setItem('app_cache', JSON.stringify(cacheData));
+                } catch (err) {
+                    console.warn('[OfflineManager] Failed to save app_cache:', err?.message || err);
+                }
 
                 updateStatsUI(stats);
                 updateAnnouncementsUI(announcements);
@@ -228,16 +236,61 @@
                 updateDeadlinesUI(deadlines);
                 updateQuizzesUI(quizzes);
                 updateConnectionUI(true);
+
+                // Update server-dot based on whether the data layer reports online
+                try {
+                    const dot = document.getElementById('server-dot');
+                    if (dot) {
+                        const live = (typeof window.DashboardOnline !== 'undefined') ? !!window.DashboardOnline : navigator.onLine;
+                        dot.classList.toggle('live', live);
+                    }
+                } catch (e) {
+                    // ignore
+                }
+
+                // Update metadata (last-updated, timezone) using the same codepath
+                try {
+                    if (typeof updateMeta === 'function') {
+                        await updateMeta();
+                    }
+                } catch (e) {
+                    // Non-fatal - meta may still be from cache
+                }
+
+                // If we transitioned from offline (data-layer) -> online, show a single toast
+                try {
+                    const postOnline = (typeof window.DashboardOnline !== 'undefined') ? !!window.DashboardOnline : navigator.onLine;
+                    if (!prevOnline && postOnline) {
+                        const lastToast = window._lastConnectionToastTimestamp || 0;
+                        if (Date.now() - lastToast > 5000) {
+                            if (window.DashboardUtils && typeof window.DashboardUtils.showToast === 'function') {
+                                window.DashboardUtils.showToast('Connection restored.', 'success');
+                            }
+                            window._lastConnectionToastTimestamp = Date.now();
+                        }
+                    }
+                } catch (e) {
+                    // ignore toast failures
+                }
+
                 console.log('[OfflineManager] Data updated and cached');
             } catch (err) {
-                console.warn('[OfflineManager] Fetch failed:', err.message);
+                console.warn('[OfflineManager] Fetch failed:', err?.message || err);
+                // Mark data-layer offline
+                try { window.DashboardOnline = false; } catch (e) {}
+                try {
+                    const dot = document.getElementById('server-dot');
+                    if (dot) dot.classList.remove('live');
+                } catch (e) {}
+            } finally {
+                this._isFetching = false;
             }
         },
 
         getCachedData: getLocalCacheData,
         hasCache: (key) => !!getLocalCacheData(key),
         isCacheStale: isDataStale,
-        isOnline: () => navigator.onLine
+        isOnline: () => (typeof window.DashboardOnline !== 'undefined') ? !!window.DashboardOnline : navigator.onLine
     };
 
     function updateConnectionUI(online) {
@@ -251,18 +304,12 @@
         window.addEventListener('online', () => {
             console.log('[OfflineManager] Back online');
             updateConnectionUI(true);
-            if (window.DashboardUtils?.showToast) {
-                DashboardUtils.showToast('Connection restored.', 'success');
-            }
             OfflineManager.fetchAndCacheData();
         });
 
         window.addEventListener('offline', () => {
             console.log('[OfflineManager] Offline');
             updateConnectionUI(false);
-            if (window.DashboardUtils?.showToast) {
-                DashboardUtils.showToast('Offline. Using cached data.', 'warning');
-            }
         });
     }
 
