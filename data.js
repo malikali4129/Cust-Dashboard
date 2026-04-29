@@ -258,17 +258,14 @@ async function pagedRead(table, { page = 1, pageSize = DEFAULT_PAGE_SIZE, order,
 
         return result;
     } catch (err) {
-        // If offline, try localStorage cache first
-        if (!navigator.onLine) {
-            const cached = getLocalCacheData(cacheKey);
-            if (cached) {
-                console.warn(`[pagedRead] Offline - using cached ${table}`);
-                return cached;
-            }
-            console.warn(`[pagedRead] Offline - no cache for ${table}`);
-            return { items: [], total: 0, page, pageSize };
+        // On any fetch failure, try localStorage cache first
+        const cached = getLocalCacheData(cacheKey);
+        if (cached) {
+            console.warn(`[pagedRead] Fetch failed - using cached ${table}:`, err?.message || err);
+            return cached;
         }
-        throw err;
+        console.warn(`[pagedRead] Fetch failed - no cache for ${table}:`, err?.message || err);
+        return { items: [], total: 0, page, pageSize };
     }
 }
 
@@ -297,17 +294,14 @@ async function listRead(table, { limit, order, normalize = (item) => item } = {}
 
         return result;
     } catch (err) {
-        // If offline, try localStorage cache first
-        if (!navigator.onLine) {
-            const cached = getLocalCacheData(cacheKey);
-            if (cached) {
-                console.warn(`[listRead] Offline - using cached ${table}`);
-                return cached;
-            }
-            console.warn(`[listRead] Offline - no cache for ${table}`);
-            return [];
+        // On any fetch failure, try localStorage cache first
+        const cached = getLocalCacheData(cacheKey);
+        if (cached) {
+            console.warn(`[listRead] Fetch failed - using cached ${table}:`, err?.message || err);
+            return cached;
         }
-        throw err;
+        console.warn(`[listRead] Fetch failed - no cache for ${table}:`, err?.message || err);
+        return [];
     }
 }
 
@@ -595,20 +589,17 @@ async function getSettings() {
 
         return result;
     } catch (err) {
-        // If offline, try localStorage cache first
-        if (!navigator.onLine) {
-            const cached = getLocalCacheData('settings');
-            if (cached) {
-                console.warn('[getSettings] Offline - using cached settings');
-                return cached;
-            }
-            console.warn('[getSettings] Offline - returning defaults');
-            return {
-                timeZone: DEFAULT_TIME_ZONE,
-                lastUpdated: null
-            };
+        // If fetching settings failed, prefer local cache when available
+        const cached = getLocalCacheData('settings');
+        if (cached) {
+            console.warn('[getSettings] Fetch failed - using cached settings:', err?.message || err);
+            return cached;
         }
-        throw err;
+        console.warn('[getSettings] Fetch failed - returning defaults:', err?.message || err);
+        return {
+            timeZone: DEFAULT_TIME_ZONE,
+            lastUpdated: null
+        };
     }
 }
 
@@ -1077,25 +1068,22 @@ async function getStats() {
 
         return result;
     } catch (err) {
-        // If offline, try localStorage cache first
-        if (!navigator.onLine) {
-            const cached = getLocalCacheData('stats');
-            if (cached) {
-                console.warn('[getStats] Offline - using cached stats');
-                return cached;
-            }
-            console.warn('[getStats] Offline - returning default stats');
-            return {
-                totalAnnouncements: 0,
-                totalAssignments: 0,
-                pendingAssignments: 0,
-                completedAssignments: 0,
-                upcomingDeadlines: 0,
-                totalQuizzes: 0,
-                upcomingQuizzes: 0
-            };
+        // On any failure, prefer cached stats when available
+        const cached = getLocalCacheData('stats');
+        if (cached) {
+            console.warn('[getStats] Fetch failed - using cached stats:', err?.message || err);
+            return cached;
         }
-        throw err;
+        console.warn('[getStats] Fetch failed - returning default stats:', err?.message || err);
+        return {
+            totalAnnouncements: 0,
+            totalAssignments: 0,
+            pendingAssignments: 0,
+            completedAssignments: 0,
+            upcomingDeadlines: 0,
+            totalQuizzes: 0,
+            upcomingQuizzes: 0
+        };
     }
 }
 

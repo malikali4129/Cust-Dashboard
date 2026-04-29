@@ -37,11 +37,45 @@
          */
         initCache() {
             try {
-                const cached = localStorage.getItem('app_cache');
-                if (cached) {
-                    this.cache = JSON.parse(cached);
-                    console.log('[OfflineManager] Cache initialized');
+                // Try structured cache first (app_cache)
+                const appCache = localStorage.getItem('app_cache');
+                if (appCache) {
+                    this.cache = JSON.parse(appCache);
+                    console.log('[OfflineManager] Loaded app_cache');
+                    return;
                 }
+
+                // Fallback: merge legacy per-key dashboard_data_cache entries
+                const raw = localStorage.getItem(CACHE_KEY);
+                if (raw) {
+                    const parsed = JSON.parse(raw);
+                    // Populate common keys if present
+                    this.cache = {};
+                    if (parsed.stats) this.cache.stats = parsed.stats;
+
+                    const pickList = (table) => {
+                        const keys = Object.keys(parsed).filter(k => k.startsWith(`${table}_list_`));
+                        if (keys.length === 0) return null;
+                        // Prefer 'all' variant if present
+                        const allKey = keys.find(k => k.includes('_list_all_')) || keys[0];
+                        return parsed[allKey];
+                    };
+
+                    const a = pickList('announcements');
+                    if (a) this.cache.announcements = a;
+                    const asg = pickList('assignments');
+                    if (asg) this.cache.assignments = asg;
+                    const d = pickList('deadlines');
+                    if (d) this.cache.deadlines = d;
+                    const q = pickList('quizzes');
+                    if (q) this.cache.quizzes = q;
+
+                    console.log('[OfflineManager] Merged dashboard_data_cache into cache');
+                    return;
+                }
+
+                // Nothing found
+                this.cache = {};
             } catch (err) {
                 console.warn('[OfflineManager] Cache init failed:', err.message);
                 this.cache = {};
@@ -52,14 +86,29 @@
          * 🔧 FIX 1: Get cached data by key
          */
         get(key) {
-            return this.cache[key] || [];
+            if (key in this.cache) return this.cache[key];
+            // Try direct localStorage lookup for raw keys (e.g., 'stats' or list keys)
+            try {
+                const raw = localStorage.getItem(CACHE_KEY);
+                if (!raw) return [];
+                const parsed = JSON.parse(raw);
+                if (parsed[key]) return parsed[key];
+                // try list-style lookup for tables
+                const table = key;
+                const listKey = Object.keys(parsed).find(k => k.startsWith(`${table}_list_`));
+                if (listKey) return parsed[listKey];
+            } catch (err) {
+                // ignore
+            }
+            return [];
         },
 
         /**
          * Check if key has cached data
          */
         has(key) {
-            return key in this.cache && Array.isArray(this.cache[key]) && this.cache[key].length > 0;
+            const val = this.get(key);
+            return Array.isArray(val) ? val.length > 0 : !!val;
         },
 
         /**
@@ -82,21 +131,55 @@
             setupConnectivityListeners();
 
             // Load cached data first (instant, works offline)
-            if (opts.loadStats && getLocalCacheData('stats')) {
-                updateStatsUI(getLocalCacheData('stats'));
+            const statsCached = this.cache.stats || getLocalCacheData('stats');
+            if (opts.loadStats && statsCached) {
+                updateStatsUI(statsCached);
                 console.log('[OfflineManager] Stats from cache');
             }
-            if (opts.loadAnnouncements && getLocalCacheData('announcements_list_all')) {
-                updateAnnouncementsUI(getLocalCacheData('announcements_list_all'));
+
+            const announcementsCached = this.cache.announcements || (() => {
+                try {
+                    // Try to find any announcements_list_* key in dashboard_data_cache
+                    const raw = JSON.parse(localStorage.getItem(CACHE_KEY) || '{}');
+                    const key = Object.keys(raw).find(k => k.startsWith('announcements_list_'));
+                    return key ? raw[key] : null;
+                } catch { return null; }
+            })();
+            if (opts.loadAnnouncements && announcementsCached) {
+                updateAnnouncementsUI(announcementsCached);
             }
-            if (opts.loadAssignments && getLocalCacheData('assignments_list_all')) {
-                updateAssignmentsUI(getLocalCacheData('assignments_list_all'));
+
+            const assignmentsCached = this.cache.assignments || (() => {
+                try {
+                    const raw = JSON.parse(localStorage.getItem(CACHE_KEY) || '{}');
+                    const key = Object.keys(raw).find(k => k.startsWith('assignments_list_'));
+                    return key ? raw[key] : null;
+                } catch { return null; }
+            })();
+            if (opts.loadAssignments && assignmentsCached) {
+                updateAssignmentsUI(assignmentsCached);
             }
-            if (opts.loadDeadlines && getLocalCacheData('deadlines_list_all')) {
-                updateDeadlinesUI(getLocalCacheData('deadlines_list_all'));
+
+            const deadlinesCached = this.cache.deadlines || (() => {
+                try {
+                    const raw = JSON.parse(localStorage.getItem(CACHE_KEY) || '{}');
+                    const key = Object.keys(raw).find(k => k.startsWith('deadlines_list_'));
+                    return key ? raw[key] : null;
+                } catch { return null; }
+            })();
+            if (opts.loadDeadlines && deadlinesCached) {
+                updateDeadlinesUI(deadlinesCached);
             }
-            if (opts.loadQuizzes && getLocalCacheData('quizzes_list_all')) {
-                updateQuizzesUI(getLocalCacheData('quizzes_list_all'));
+
+            const quizzesCached = this.cache.quizzes || (() => {
+                try {
+                    const raw = JSON.parse(localStorage.getItem(CACHE_KEY) || '{}');
+                    const key = Object.keys(raw).find(k => k.startsWith('quizzes_list_'));
+                    return key ? raw[key] : null;
+                } catch { return null; }
+            })();
+            if (opts.loadQuizzes && quizzesCached) {
+                updateQuizzesUI(quizzesCached);
             }
 
             // Fetch fresh if online
