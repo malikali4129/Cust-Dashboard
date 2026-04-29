@@ -579,9 +579,17 @@ function initConnectivity() {
                 await window.OfflineManager.fetchAndCacheData({ runFullRefresh: runFull });
                 // Clear suppression after fetch finishes
                 window._suppressNonFullFetchUntil = 0;
+                // Refresh the last-updated timestamp after sync completes
+                if (typeof updateMeta === 'function') {
+                    await updateMeta();
+                }
             }
         } catch (e) {
             window._suppressNonFullFetchUntil = 0;
+            // Show error state - fallback to last known or time
+            if (typeof updateMeta === 'function') {
+                await updateMeta();
+            }
         }
     });
 
