@@ -335,7 +335,7 @@ svg {
 .dashboard-footer {
   background: var(--bg-elevated);
   border-top: 1px solid var(--border);
-  padding: var(--space-6) var(--space-4);
+  padding: var(--space-3) var(--space-4);
   margin-top: auto;
 }
 
@@ -345,7 +345,7 @@ svg {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--space-4);
+  gap: var(--space-1);
 }
 
 .footer-actions {
@@ -387,11 +387,11 @@ svg {
 @media (min-width: 768px) {
   .footer-content {
     flex-direction: row;
-    justify-content: space-between;
+    justify-content: center;
   }
 
   .footer-info {
-    text-align: right;
+    text-align: center;
   }
 }
 
