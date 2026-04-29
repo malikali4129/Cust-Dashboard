@@ -1437,6 +1437,11 @@ async function saveItem() {
             }
 
             DashboardUtils.showToast('Created successfully.', 'success');
+            // Notify dashboard to refresh
+            try {
+                localStorage.setItem('_dataChanged', Date.now().toString());
+                window.dispatchEvent(new CustomEvent('dataChanged'));
+            } catch (e) {}
         }
 
         DashboardUtils.closeModal('item-modal');
@@ -1465,6 +1470,11 @@ async function deleteItem(id) {
     try {
         await config.remove(id);
         DashboardUtils.showToast('Deleted successfully.', 'success');
+        // Notify dashboard to refresh (via localStorage signal + custom event)
+        try {
+            localStorage.setItem('_dataChanged', Date.now().toString());
+            window.dispatchEvent(new CustomEvent('dataChanged'));
+        } catch (e) {}
     } catch (error) {
         if (removed) {
             adminState.items = previousItems;

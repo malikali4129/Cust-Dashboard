@@ -546,6 +546,41 @@ async function startUpdatePolling() {
 document.addEventListener('DOMContentLoaded', () => {
     initDashboard();
     initStarRating();
+
+    // Listen for data changes from admin (delete, create, update)
+    window.addEventListener('dataChanged', async () => {
+        console.log('[Dashboard] Data changed - refreshing...');
+        try {
+            // Fetch fresh data and re-render everything
+            const [stats, ann, asg, dl, qz] = await Promise.all([
+                DashboardData.getStats(),
+                DashboardData.getAnnouncements({ limit: 5 }),
+                DashboardData.getAssignments({ limit: 4 }),
+                DashboardData.getDeadlines({ limit: 5 }),
+                DashboardData.getQuizzes({ limit: 4 })
+            ]);
+
+            // Update counts
+            dashboardState.counts = {
+                announcements: stats.totalAnnouncements || 0,
+                assignments: stats.pendingAssignments || 0,
+                quizzes: stats.upcomingQuizzes || 0
+            };
+
+            // Re-render all UI
+            renderStats(stats);
+            renderAnnouncements(ann);
+            renderAssignments(asg);
+            renderDeadlines(dl);
+            renderQuizzes(qz);
+
+            // Update last sync time
+            const updated = document.getElementById('last-updated');
+            if (updated) updated.textContent = 'Just now';
+        } catch (e) {
+            console.warn('[Dashboard] Refresh failed:', e.message);
+        }
+    });
 });
 window.openDetailModal = openDetailModal;
 window.openFeedbackModal = openFeedbackModal;
