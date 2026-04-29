@@ -181,6 +181,9 @@ async function updateMeta() {
             return;
         }
 
+        // Always sync dashboardState.lastUpdated so polling can detect future changes
+        dashboardState.lastUpdated = settings.lastUpdated || null;
+
         if (updated) {
             updated.textContent = settings.lastUpdated
                 ? DashboardUtils.getRelativeTime(settings.lastUpdated)
@@ -481,9 +484,7 @@ async function startUpdatePolling() {
             const currentLastUpdated = settings.lastUpdated || null;
 
             // Detect a real database change
-            if (dashboardState.lastUpdated !== null &&
-                currentLastUpdated !== null &&
-                currentLastUpdated !== dashboardState.lastUpdated) {
+            if (currentLastUpdated !== dashboardState.lastUpdated) {
                 // Get new stats to compare counts
                 const newStats = await DashboardData.getStats();
                 const newCounts = {
