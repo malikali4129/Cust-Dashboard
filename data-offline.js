@@ -50,16 +50,16 @@
                 const raw = localStorage.getItem(CACHE_KEY);
                 if (raw) {
                     const parsed = JSON.parse(raw);
-                    // Populate common keys if present
+                    // Populate common keys if present - extract .data from wrapped structure
                     this.cache = {};
-                    if (parsed.stats) this.cache.stats = parsed.stats;
+                    if (parsed.stats?.data) this.cache.stats = parsed.stats.data;
 
                     const pickList = (table) => {
                         const keys = Object.keys(parsed).filter(k => k.startsWith(`${table}_list_`));
                         if (keys.length === 0) return null;
                         // Prefer 'all' variant if present
                         const allKey = keys.find(k => k.includes('_list_all_')) || keys[0];
-                        return parsed[allKey];
+                        return parsed[allKey]?.data || parsed[allKey];
                     };
 
                     const a = pickList('announcements');
