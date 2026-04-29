@@ -54,18 +54,26 @@ function renderStats(stats) {
     }
 
     const cards = [
-        { value: stats.totalAnnouncements, label: 'Announcements', tone: 'champagne' },
-        { value: stats.pendingAssignments, label: 'Pending', tone: 'emerald' },
-        { value: stats.upcomingDeadlines, label: 'Deadlines', tone: 'ruby' },
-        { value: stats.upcomingQuizzes, label: 'Quizzes', tone: 'ink' }
+        { value: stats.totalAnnouncements, label: 'Announcements', tone: 'champagne', section: 'announcements' },
+        { value: stats.pendingAssignments, label: 'Pending', tone: 'emerald', section: 'assignments' },
+        { value: stats.upcomingDeadlines, label: 'Deadlines', tone: 'ruby', section: 'deadlines' },
+        { value: stats.upcomingQuizzes, label: 'Quizzes', tone: 'ink', section: 'quizzes' }
     ];
 
     grid.innerHTML = cards.map((card) => `
-        <article class="count-card stat-${card.tone}">
+        <article class="count-card stat-${card.tone}" onclick="scrollToSection('${card.section}')" style="cursor: pointer;">
             <div class="count-value">${card.value}</div>
             <div class="count-label">${card.label}</div>
         </article>
     `).join('');
+}
+
+function scrollToSection(sectionId) {
+    const section = document.getElementById(sectionId);
+    if (section) {
+        section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        section.focus();
+    }
 }
 
 function renderAnnouncements(items) {
