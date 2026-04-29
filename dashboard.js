@@ -518,6 +518,9 @@ async function startUpdatePolling() {
                     DashboardData.getDeadlines({ limit: 5 }),
                     DashboardData.getQuizzes({ limit: 4 })
                 ]);
+
+                // Render stats FIRST so the grid updates immediately
+                renderStats(newStats);
                 renderAnnouncements(freshData[0]);
                 renderAssignments(freshData[1]);
                 renderDeadlines(freshData[2]);
@@ -552,6 +555,7 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log('[Dashboard] Data changed - refreshing...');
         try {
             // Fetch fresh data and re-render everything
+            console.log('[Dashboard] Fetching fresh data...');
             const [stats, ann, asg, dl, qz] = await Promise.all([
                 DashboardData.getStats(),
                 DashboardData.getAnnouncements({ limit: 5 }),
@@ -560,12 +564,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 DashboardData.getQuizzes({ limit: 4 })
             ]);
 
+            console.log('[Dashboard] Got stats:', stats);
+
             // Update counts
             dashboardState.counts = {
                 announcements: stats.totalAnnouncements || 0,
                 assignments: stats.pendingAssignments || 0,
                 quizzes: stats.upcomingQuizzes || 0
             };
+
+            console.log('[Dashboard] Calling renderStats with:', stats);
 
             // Re-render all UI
             renderStats(stats);
@@ -577,8 +585,10 @@ document.addEventListener('DOMContentLoaded', () => {
             // Update last sync time
             const updated = document.getElementById('last-updated');
             if (updated) updated.textContent = 'Just now';
+
+            console.log('[Dashboard] Refresh complete');
         } catch (e) {
-            console.warn('[Dashboard] Refresh failed:', e.message);
+            console.warn('[Dashboard] Refresh failed:', e.message, e);
         }
     });
 });
