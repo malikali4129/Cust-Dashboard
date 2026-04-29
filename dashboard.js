@@ -391,12 +391,21 @@ async function initDashboard(showLoading = true) {
     // Check if truly online before attempting network requests
     const isOnline = navigator.onLine;
 
+    // Update preloader status based on connection
+    const preloaderStatus = document.getElementById('preloader-status');
+    const preloaderActions = document.getElementById('preloader-actions');
+
     if (!isOnline) {
-        // Offline - show banner and load from cache
-        const banner = document.getElementById('offline-banner');
-        if (banner) {
-            banner.innerHTML = '⚠️ Showing cached data — you are offline';
-            banner.classList.add('is-visible');
+        if (preloaderStatus) {
+            preloaderStatus.textContent = 'You are offline — showing cached data';
+            preloaderStatus.className = 'preloader-status is-offline';
+        }
+        if (preloaderActions) {
+            preloaderActions.style.display = 'block';
+        }
+    } else {
+        if (preloaderStatus) {
+            preloaderStatus.textContent = 'Connecting...';
         }
     }
 
@@ -441,10 +450,21 @@ async function initDashboard(showLoading = true) {
     } catch (error) {
         console.error('[initDashboard] Load failed:', error.message || error);
 
+        // Check if we're offline - show offline button on preloader
+        if (!navigator.onLine) {
+            if (preloaderStatus) {
+                preloaderStatus.textContent = 'No connection — continue with cached data?';
+                preloaderStatus.className = 'preloader-status is-offline';
+            }
+            if (preloaderActions) {
+                preloaderActions.style.display = 'block';
+            }
+        }
+
         // Show offline banner - we'll still try to show cached data if available
         const banner = document.getElementById('offline-banner');
         if (banner && !navigator.onLine) {
-            banner.innerHTML = '⚠️ Showing cached data — you are offline';
+            banner.innerHTML = 'You are offline — showing cached data';
             banner.classList.add('is-visible');
         }
 
@@ -471,6 +491,26 @@ async function initDashboard(showLoading = true) {
         initOfflineDetection();
         finalizeLoad();
     }
+}
+
+// Continue offline button handler
+function continueOffline() {
+    const preloaderActions = document.getElementById('preloader-actions');
+    if (preloaderActions) {
+        preloaderActions.style.display = 'none';
+    }
+    // Hide the offline banner for now - user chose to continue
+    finalizeLoad();
+    // Render the dashboard with cached data
+    Promise.all([
+        renderSection(renderAnnouncements, () => DashboardData.getAnnouncements({ limit: 5 }), 'announcements-list'),
+        renderSection(renderAssignments, () => DashboardData.getAssignments({ limit: 4 }), 'assignments-list'),
+        renderSection(renderDeadlines, () => DashboardData.getDeadlines({ limit: 5 }), 'deadlines-list'),
+        renderSection(renderQuizzes, () => DashboardData.getQuizzes({ limit: 4 }), 'quizzes-list')
+    ]).then(() => {
+        startUpdatePolling();
+        initOfflineDetection();
+    });
 }
 
 function finalizeLoad() {
@@ -576,7 +616,7 @@ function initOfflineDetection() {
 
     const goOffline = () => {
         if (banner) {
-            banner.innerHTML = '⚠️ Showing cached data — you are offline';
+            banner.textContent = 'You are offline — showing cached data';
             banner.classList.add('is-visible');
         }
     };
@@ -609,3 +649,5 @@ document.addEventListener('DOMContentLoaded', () => {
 window.openDetailModal = openDetailModal;
 window.openFeedbackModal = openFeedbackModal;
 window.submitFeedback = submitFeedback;
+window.continueOffline = continueOffline;
+window.refreshDashboard = refreshDashboard;
