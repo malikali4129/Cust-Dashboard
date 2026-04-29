@@ -200,6 +200,12 @@
         async fetchAndCacheData(options = {}) {
             const prevOnline = (typeof window.DashboardOnline !== 'undefined') ? !!window.DashboardOnline : false;
 
+            // If a full refresh is scheduled from reconnect, skip lightweight fetches
+            if (!options?.runFullRefresh && window._suppressNonFullFetchUntil && Date.now() < window._suppressNonFullFetchUntil) {
+                console.log('[OfflineManager] Skipping non-full fetch due to pending full refresh');
+                return;
+            }
+
             if (!navigator.onLine) {
                 console.log('[OfflineManager] Offline - skipping fetch');
                 return;
@@ -257,20 +263,34 @@
                     // Non-fatal - meta may still be from cache
                 }
 
-                // If we transitioned from offline (data-layer) -> online, show a single toast
-                try {
-                    const postOnline = (typeof window.DashboardOnline !== 'undefined') ? !!window.DashboardOnline : navigator.onLine;
-                    if (!prevOnline && postOnline) {
-                        const lastToast = window._lastConnectionToastTimestamp || 0;
-                        if (Date.now() - lastToast > 5000) {
-                            if (window.DashboardUtils && typeof window.DashboardUtils.showToast === 'function') {
-                                window.DashboardUtils.showToast('Connection restored.', 'success');
-                            }
-                            window._lastConnectionToastTimestamp = Date.now();
+                // If requested by the caller (reconnection), perform a silent full refresh
+                if (options && options.runFullRefresh) {
+                    try {
+                        // Clear legacy local cache to force fresh reads
+                        if (window.DashboardData && typeof window.DashboardData.clearLocalCache === 'function') {
+                            window.DashboardData.clearLocalCache();
                         }
+
+                        // Refresh meta and stats silently (no toasts)
+                        if (typeof updateMeta === 'function') await updateMeta();
+                        if (window.DashboardData && typeof window.DashboardData.getStats === 'function') {
+                            const statsResult = await window.DashboardData.getStats();
+                            if (typeof renderStats === 'function') renderStats(statsResult);
+                            if (typeof setServerLiveState === 'function') {
+                                setServerLiveState(typeof window.DashboardOnline !== 'undefined' ? !!window.DashboardOnline : navigator.onLine);
+                            }
+                        }
+
+                        // Reload all content sections silently
+                        if (typeof renderSection === 'function') {
+                            renderSection(renderAnnouncements, () => DashboardData.getAnnouncements({ limit: 5 }), 'announcements-list');
+                            renderSection(renderAssignments, () => DashboardData.getAssignments({ limit: 4 }), 'assignments-list');
+                            renderSection(renderDeadlines, () => DashboardData.getDeadlines({ limit: 5 }), 'deadlines-list');
+                            renderSection(renderQuizzes, () => DashboardData.getQuizzes({ limit: 4 }), 'quizzes-list');
+                        }
+                    } catch (e) {
+                        console.warn('[OfflineManager] Silent full refresh failed:', e?.message || e);
                     }
-                } catch (e) {
-                    // ignore toast failures
                 }
 
                 console.log('[OfflineManager] Data updated and cached');
@@ -304,7 +324,7 @@
         window.addEventListener('online', () => {
             console.log('[OfflineManager] Back online');
             updateConnectionUI(true);
-            OfflineManager.fetchAndCacheData();
+            // Do not trigger fetch here — `script.js` centralizes reconnection handling
         });
 
         window.addEventListener('offline', () => {

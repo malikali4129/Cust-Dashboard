@@ -545,28 +545,44 @@ function initConnectivity() {
         if (updated) updated.textContent = 'Offline';
     }
 
-    window.addEventListener('online', () => {
+    // Track whether we observed an offline event in this session
+    window._hadOfflineEvent = window._hadOfflineEvent || false;
+
+    window.addEventListener('online', async () => {
         updateConnectivityUI();
         // Hide offline banner if present
         const banner = document.getElementById('offline-banner');
         if (banner) banner.classList.remove('is-visible');
 
-        // Indicate syncing; the data-layer will mark the server live when fetch succeeds
+        // Indicate syncing; wait for data-layer to mark server live
         const serverDot = document.getElementById('server-dot');
         if (serverDot) serverDot.classList.remove('live');
         const updated = document.getElementById('last-updated');
         if (updated) updated.textContent = 'Syncing...';
 
-        // Show a single 'Connection restored' toast and record timestamp to avoid duplicates
-        showToast('Connection restored.', 'success');
-        window._lastConnectionToastTimestamp = Date.now();
-
-        // Trigger data refresh in the offline manager (if available)
+        // Only show connection-restored toast if we previously observed an offline event
         try {
-            if (window.OfflineManager && typeof window.OfflineManager.fetchAndCacheData === 'function') {
-                window.OfflineManager.fetchAndCacheData().catch(() => {});
+            if (window._hadOfflineEvent) {
+                showToast('Connection restored.', 'success');
+                window._lastConnectionToastTimestamp = Date.now();
             }
         } catch (e) {}
+
+        // Trigger data refresh in the offline manager (request full refresh when returning from offline)
+        try {
+            if (window.OfflineManager && typeof window.OfflineManager.fetchAndCacheData === 'function') {
+                const runFull = !!window._hadOfflineEvent;
+                // Suppress any competing non-full fetches for a short window
+                window._suppressNonFullFetchUntil = Date.now() + 4000;
+                // Reset the flag immediately so subsequent events behave correctly
+                window._hadOfflineEvent = false;
+                await window.OfflineManager.fetchAndCacheData({ runFullRefresh: runFull });
+                // Clear suppression after fetch finishes
+                window._suppressNonFullFetchUntil = 0;
+            }
+        } catch (e) {
+            window._suppressNonFullFetchUntil = 0;
+        }
     });
 
     window.addEventListener('offline', () => {
@@ -581,6 +597,8 @@ function initConnectivity() {
             banner.classList.add('is-visible');
         }
         showToast('You are offline. Cloud writes are paused.', 'warning');
+        // Mark that we've seen offline; this enables a single 'Connection restored' toast on reconnect
+        window._hadOfflineEvent = true;
         window._lastConnectionToastTimestamp = 0;
     });
 }
