@@ -517,12 +517,22 @@ async function startUpdatePolling() {
                     DashboardUtils.showToast('Dashboard updated', 'success');
                 }
 
-                // Update state and refresh dashboard
+                // Update state FIRST to prevent re-triggering on next poll
                 dashboardState.lastUpdated = currentLastUpdated;
                 dashboardState.counts = newCounts;
 
-                // Re-fetch data without showing preloader
-                await initDashboard(false);
+                // Re-fetch data via direct render (skip OfflineManager init to avoid triggering another fetch loop)
+                // We already have fresh data from getStats above - just re-render without calling OfflineManager
+                const freshData = await Promise.all([
+                    DashboardData.getAnnouncements({ limit: 5 }),
+                    DashboardData.getAssignments({ limit: 4 }),
+                    DashboardData.getDeadlines({ limit: 5 }),
+                    DashboardData.getQuizzes({ limit: 4 })
+                ]);
+                renderAnnouncements(freshData[0]);
+                renderAssignments(freshData[1]);
+                renderDeadlines(freshData[2]);
+                renderQuizzes(freshData[3]);
             }
         } catch (error) {
             // Check for session expired / auth errors
