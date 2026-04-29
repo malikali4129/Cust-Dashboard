@@ -636,8 +636,16 @@ async function registerServiceWorker() {
         const registration = await navigator.serviceWorker.register('./sw.js');
         console.log('[SW] Registered:', registration);
 
-        // Listen for updates
+        // Track if this is the first install (vs an actual update)
+        const existingController = registration.active;
+
+        // Listen for updates - only trigger if we already had an active worker
         registration.addEventListener('updatefound', () => {
+            // Only trigger update if there was a previous active worker (real update, not first install)
+            if (!existingController) {
+                console.log('[SW] First install - not triggering update');
+                return;
+            }
             console.log('[SW] Update found');
             const newWorker = registration.installing;
             if (newWorker) {
@@ -651,8 +659,8 @@ async function registerServiceWorker() {
             }
         });
 
-        // Check if there's already a waiting worker (but only if not already updating)
-        if (registration.waiting && !updateHandled) {
+        // Check if there's already a waiting worker (but only if not first install)
+        if (registration.waiting && !updateHandled && existingController) {
             console.log('[SW] Waiting worker found');
             registration.waiting.postMessage({ type: 'skipWaiting' });
             triggerUpdate();
