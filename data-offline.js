@@ -220,6 +220,7 @@
             console.log('[OfflineManager] Fetching fresh data...');
 
             try {
+                // Always fetch data first (needed for both normal and full refresh)
                 const [stats, announcements, assignments, deadlines, quizzes] = await Promise.all([
                     DashboardData.getStats(),
                     DashboardData.getAnnouncements(),
@@ -228,7 +229,7 @@
                     DashboardData.getQuizzes()
                 ]);
 
-                // Store structured cache for easy retrieval
+                // Store structured cache for easy retrieval (always save)
                 const cacheData = { stats, announcements, assignments, deadlines, quizzes };
                 try {
                     localStorage.setItem('app_cache', JSON.stringify(cacheData));
@@ -236,58 +237,61 @@
                     console.warn('[OfflineManager] Failed to save app_cache:', err?.message || err);
                 }
 
-                updateStatsUI(stats);
-                updateAnnouncementsUI(announcements);
-                updateAssignmentsUI(assignments);
-                updateDeadlinesUI(deadlines);
-                updateQuizzesUI(quizzes);
-                updateConnectionUI(true);
+                // If this is a full refresh (reconnection), skip initial render - the full refresh block handles everything
+                if (options && options.runFullRefresh) {
+                    // Data fetched and cached - skip rendering here, full refresh block handles UI below
+                } else {
+                    // Normal update: render the fetched data
+                    updateStatsUI(stats);
+                    updateAnnouncementsUI(announcements);
+                    updateAssignmentsUI(assignments);
+                    updateDeadlinesUI(deadlines);
+                    updateQuizzesUI(quizzes);
+                    updateConnectionUI(true);
 
-                // Update server-dot based on whether the data layer reports online
-                try {
-                    const dot = document.getElementById('server-dot');
-                    if (dot) {
-                        const live = (typeof window.DashboardOnline !== 'undefined') ? !!window.DashboardOnline : navigator.onLine;
-                        dot.classList.toggle('live', live);
+                    // Update server-dot based on whether the data layer reports online
+                    try {
+                        const dot = document.getElementById('server-dot');
+                        if (dot) {
+                            const live = (typeof window.DashboardOnline !== 'undefined') ? !!window.DashboardOnline : navigator.onLine;
+                            dot.classList.toggle('live', live);
+                        }
+                    } catch (e) {
+                        // ignore
                     }
-                } catch (e) {
-                    // ignore
+
+                    // Update metadata (last-updated, timezone)
+                    try {
+                        if (typeof updateMeta === 'function') {
+                            await updateMeta();
+                        }
+                    } catch (e) {
+                        // Non-fatal - meta may still be from cache
+                    }
                 }
 
-                // Update metadata (last-updated, timezone) using the same codepath
-                try {
-                    if (typeof updateMeta === 'function') {
-                        await updateMeta();
-                    }
-                } catch (e) {
-                    // Non-fatal - meta may still be from cache
-                }
-
-                // If requested by the caller (reconnection), perform a silent full refresh
+                // If requested by caller (reconnection), render using already-fetched data (no re-fetch needed)
                 if (options && options.runFullRefresh) {
                     try {
-                        // Clear legacy local cache to force fresh reads
+                        // Clear legacy cache to force fresh reads on next normal fetch
                         if (window.DashboardData && typeof window.DashboardData.clearLocalCache === 'function') {
                             window.DashboardData.clearLocalCache();
                         }
 
-                        // Refresh meta and stats silently (no toasts)
+                        // Update meta with fresh settings
                         if (typeof updateMeta === 'function') await updateMeta();
-                        if (window.DashboardData && typeof window.DashboardData.getStats === 'function') {
-                            const statsResult = await window.DashboardData.getStats();
-                            if (typeof renderStats === 'function') renderStats(statsResult);
-                            if (typeof setServerLiveState === 'function') {
-                                setServerLiveState(typeof window.DashboardOnline !== 'undefined' ? !!window.DashboardOnline : navigator.onLine);
-                            }
+
+                        // Render stats using already-fetched data (not re-fetching)
+                        if (typeof renderStats === 'function') renderStats(stats);
+                        if (typeof setServerLiveState === 'function') {
+                            setServerLiveState(typeof window.DashboardOnline !== 'undefined' ? !!window.DashboardOnline : navigator.onLine);
                         }
 
-                        // Reload all content sections silently
-                        if (typeof renderSection === 'function') {
-                            renderSection(renderAnnouncements, () => DashboardData.getAnnouncements({ limit: 5 }), 'announcements-list');
-                            renderSection(renderAssignments, () => DashboardData.getAssignments({ limit: 4 }), 'assignments-list');
-                            renderSection(renderDeadlines, () => DashboardData.getDeadlines({ limit: 5 }), 'deadlines-list');
-                            renderSection(renderQuizzes, () => DashboardData.getQuizzes({ limit: 4 }), 'quizzes-list');
-                        }
+                        // Render content sections using already-fetched data (not re-fetching)
+                        if (typeof renderAnnouncements === 'function') renderAnnouncements(announcements);
+                        if (typeof renderAssignments === 'function') renderAssignments(assignments);
+                        if (typeof renderDeadlines === 'function') renderDeadlines(deadlines);
+                        if (typeof renderQuizzes === 'function') renderQuizzes(quizzes);
                     } catch (e) {
                         console.warn('[OfflineManager] Silent full refresh failed:', e?.message || e);
                     }
