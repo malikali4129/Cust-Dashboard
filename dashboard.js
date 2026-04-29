@@ -14,6 +14,39 @@ const dashboardState = {
     }
 };
 
+// Session inactivity - expire after 5 minutes
+const SESSION_INACTIVITY_TIMEOUT = 5 * 60 * 1000; // 5 minutes in ms
+let sessionActivityTimer = null;
+
+function resetSessionActivityTimer() {
+    // Clear existing timer
+    if (sessionActivityTimer) {
+        clearTimeout(sessionActivityTimer);
+    }
+
+    // Check if session exists
+    const sessionStr = sessionStorage.getItem('dashboard_admin_session');
+    if (!sessionStr) {
+        return; // No session, nothing to track
+    }
+
+    // Set new timer to expire session after inactivity
+    sessionActivityTimer = setTimeout(() => {
+        // Session expired due to inactivity
+        sessionStorage.removeItem('dashboard_admin_session');
+        // Redirect to admin page
+        window.location.href = 'admin.html';
+    }, SESSION_INACTIVITY_TIMEOUT);
+}
+
+function setupSessionActivityListeners() {
+    // Track user activity to reset timer
+    const activityEvents = ['click', 'mousemove', 'keypress', 'scroll', 'touchstart'];
+    activityEvents.forEach(event => {
+        document.addEventListener(event, resetSessionActivityTimer, { passive: true });
+    });
+}
+
 function renderStats(stats) {
     const grid = document.getElementById('stats-grid');
     if (!grid) {
@@ -351,6 +384,35 @@ function initStarRating() {
 }
 
 async function submitFeedback() {
+    // Check if admin session exists - if not, show login modal
+    const sessionStr = sessionStorage.getItem('dashboard_admin_session');
+    if (!sessionStr) {
+        const loginModal = document.getElementById('login-required-modal');
+        if (loginModal) {
+            loginModal.classList.remove('hidden');
+        } else {
+            const modal = document.createElement('div');
+            modal.id = 'login-required-modal';
+            modal.className = 'modal-overlay';
+            modal.innerHTML = `
+                <div class="modal">
+                    <div class="modal-header">
+                        <h3>Login Required</h3>
+                        <button class="modal-close" type="button" onclick="closeLoginModal()">Close</button>
+                    </div>
+                    <div class="modal-body">
+                        <p>Please login to submit feedback.</p>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn btn-primary" onclick="window.location.href='admin.html'">Go to Login</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+        return;
+    }
+
     const form = document.getElementById('feedback-form');
     if (!form) {
         return;
@@ -532,11 +594,30 @@ async function startUpdatePolling() {
             if (errorMsg.includes('Session expired') || errorMsg.includes('login') || errorMsg.includes('auth') || errorMsg.includes('refresh')) {
                 // Clear session from sessionStorage
                 sessionStorage.removeItem('admin_session');
-                DashboardUtils.showToast('Session expired. Please login again.', 'error');
-                // Redirect to admin login page
-                setTimeout(() => {
-                    window.location.href = 'admin.html';
-                }, 2000);
+                // Open login modal instead of just a toast
+                const loginOverlay = document.getElementById('login-required-overlay');
+                if (loginOverlay) {
+                    loginOverlay.classList.remove('hidden');
+                } else {
+                    // Create modal if not exists
+                    const modal = document.createElement('div');
+                    modal.id = 'login-required-overlay';
+                    modal.className = 'modal-overlay';
+                    modal.innerHTML = `
+                        <div class="modal">
+                            <div class="modal-header">
+                                <h3>Session Required</h3>
+                            </div>
+                            <div class="modal-body">
+                                <p>Your session has expired. Please login again to continue.</p>
+                            </div>
+                            <div class="modal-footer">
+                                <button class="btn btn-primary" onclick="window.location.href='admin.html'">Go to Login</button>
+                            </div>
+                        </div>
+                    `;
+                    document.body.appendChild(modal);
+                }
                 return;
             }
             // Network error — ignore silently, next poll will retry
@@ -549,6 +630,9 @@ async function startUpdatePolling() {
 document.addEventListener('DOMContentLoaded', () => {
     initDashboard();
     initStarRating();
+    // Start session inactivity tracking
+    resetSessionActivityTimer();
+    setupSessionActivityListeners();
 
     // Listen for data changes from admin (delete, create, update)
     window.addEventListener('dataChanged', async () => {
@@ -592,6 +676,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 });
+
+function closeLoginModal() {
+    const modal = document.getElementById('login-required-modal');
+    if (modal) modal.classList.add('hidden');
+}
+
 window.openDetailModal = openDetailModal;
 window.openFeedbackModal = openFeedbackModal;
 window.submitFeedback = submitFeedback;
+window.closeLoginModal = closeLoginModal;

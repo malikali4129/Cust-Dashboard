@@ -404,8 +404,9 @@
             'stat-announcements': stats.totalAnnouncements,
             'stat-pending': stats.pendingAssignments,
             'stat-deadlines': stats.upcomingDeadlines,
-            'stat-quizzes': stats.totalQuizzes
+            'stat-quizzes': stats.upcomingQuizzes
         };
+        console.log('[updateStatsUI] Stats:', stats);
         Object.entries(mappings).forEach(([id, val]) => {
             const el = document.getElementById(id);
             if (el) el.textContent = val;

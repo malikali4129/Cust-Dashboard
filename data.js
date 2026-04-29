@@ -8,6 +8,53 @@ const DATA_CACHE_KEY = 'dashboard_data_cache';
 const DEFAULT_PAGE_SIZE = 8;
 const DEFAULT_TIME_ZONE = 'Asia/Karachi';
 
+// ─── Session Encryption (Web Crypto API) ──────────────────────────────
+// Generate a random key on load - stored only in memory (never persisted)
+let _sessionEncryptionKey = null;
+
+// Simple XOR obfuscation key - generated once per session, stored in memory
+let _obfuscationKey = null;
+
+// Generate obfuscation key
+function _getObfuscationKey() {
+    if (!_obfuscationKey) {
+        // Generate random string
+        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+        let key = '';
+        for (let i = 0; i < 32; i++) {
+            key += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        _obfuscationKey = key;
+    }
+    return _obfuscationKey;
+}
+
+// XOR-based obfuscation - synchronous, reversible
+function _obfuscate(data) {
+    const key = _getObfuscationKey();
+    const str = JSON.stringify(data);
+    let result = '';
+    for (let i = 0; i < str.length; i++) {
+        result += String.fromCharCode(str.charCodeAt(i) ^ key.charCodeAt(i % key.length));
+    }
+    return btoa(result);
+}
+
+// XOR-based deobfuscation - synchronous
+function _deobfuscate(encoded) {
+    try {
+        const key = _getObfuscationKey();
+        const str = atob(encoded);
+        let result = '';
+        for (let i = 0; i < str.length; i++) {
+            result += String.fromCharCode(str.charCodeAt(i) ^ key.charCodeAt(i % key.length));
+        }
+        return JSON.parse(result);
+    } catch (e) {
+        return null;
+    }
+}
+
 // ─── Local Storage Cache ───────────────────────────────────────────────────
 function getLocalCache() {
     try {
@@ -60,7 +107,21 @@ function ensureSupabaseConfigured() {
 function getSession() {
     try {
         const raw = sessionStorage.getItem(ADMIN_SESSION_KEY);
-        return raw ? JSON.parse(raw) : null;
+        if (!raw) return null;
+        // Try to deobfuscate - if fails, try plain JSON for backward compatibility
+        try {
+            return _deobfuscate(raw);
+        } catch {
+            // Old plain JSON - parse and re-save as obfuscated
+            try {
+                const session = JSON.parse(raw);
+                // Re-save as obfuscated
+                setSession(session);
+                return session;
+            } catch {
+                return null;
+            }
+        }
     } catch (error) {
         sessionStorage.removeItem(ADMIN_SESSION_KEY);
         return null;
@@ -68,11 +129,16 @@ function getSession() {
 }
 
 function setSession(session) {
-    sessionStorage.setItem(ADMIN_SESSION_KEY, JSON.stringify(session));
+    if (!session) return;
+    // Store obfuscated to prevent direct reading
+    const obfuscated = _obfuscate(session);
+    sessionStorage.setItem(ADMIN_SESSION_KEY, obfuscated);
 }
 
 function clearSession() {
     sessionStorage.removeItem(ADMIN_SESSION_KEY);
+    // Also clear the in-memory obfuscation key
+    _obfuscationKey = null;
 }
 
 function buildHeaders({ auth = false, count = false, extra = {} } = {}) {

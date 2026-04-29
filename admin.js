@@ -15,6 +15,78 @@ const adminState = {
 
 let feedbackViewingId = null;
 
+// Session inactivity - expire after 5 minutes and redirect to admin page
+const SESSION_INACTIVITY_TIMEOUT = 5 * 60 * 1000; // 5 minutes in ms
+let sessionActivityTimer = null;
+
+function resetSessionActivityTimer() {
+    // Clear existing timer
+    if (sessionActivityTimer) {
+        clearTimeout(sessionActivityTimer);
+    }
+
+    // Check if session exists
+    const sessionStr = sessionStorage.getItem('dashboard_admin_session');
+    if (!sessionStr) {
+        return; // No session, nothing to track
+    }
+
+    // Set new timer to expire session after inactivity
+    sessionActivityTimer = setTimeout(() => {
+        // Session expired due to inactivity
+        sessionStorage.removeItem('dashboard_admin_session');
+        // Redirect to admin page (same page for admin)
+        window.location.href = 'admin.html';
+    }, SESSION_INACTIVITY_TIMEOUT);
+}
+
+function setupSessionActivityListeners() {
+    // Track user activity to reset timer
+    const activityEvents = ['click', 'mousemove', 'keypress', 'scroll', 'touchstart'];
+    activityEvents.forEach(event => {
+        document.addEventListener(event, resetSessionActivityTimer, { passive: true });
+    });
+}
+
+// Helper: show login modal instead of toast for permission errors
+function handlePermissionDenied(perms) {
+    if (perms.message?.includes('log in') || perms.message?.includes('login')) {
+        const loginModal = document.getElementById('login-required-modal');
+        if (loginModal) {
+            loginModal.classList.remove('hidden');
+            return true;
+        }
+        const modal = document.createElement('div');
+        modal.id = 'login-required-modal';
+        modal.className = 'modal-overlay';
+        modal.innerHTML = `
+            <div class="modal">
+                <div class="modal-header">
+                    <h3>Login Required</h3>
+                    <button class="modal-close" type="button" onclick="closeLoginRequiredModal()">Close</button>
+                </div>
+                <div class="modal-body">
+                    <p>Please login to continue.</p>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-primary" onclick="window.location.href='admin.html'">Go to Login</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+        return true;
+    }
+    DashboardUtils.showToast(perms.message, 'error');
+    return false;
+}
+
+function closeLoginRequiredModal() {
+    const modal = document.getElementById('login-required-modal');
+    if (modal) modal.classList.add('hidden');
+}
+
+window.closeLoginRequiredModal = closeLoginRequiredModal;
+
 const TAB_CONFIG = {
     announcements: {
         title: 'Announcements',
@@ -648,7 +720,7 @@ async function deleteFeedbackItem(id) {
     // Check permissions first
     const perms = await DashboardData.checkActionPermission();
     if (!perms.allowed) {
-        DashboardUtils.showToast(perms.message, 'error');
+        handlePermissionDenied(perms);
         return;
     }
 
@@ -1273,7 +1345,7 @@ async function handleDataImport(event) {
 
     const perms = await DashboardData.checkActionPermission();
     if (!perms.allowed) {
-        DashboardUtils.showToast(perms.message, 'error');
+        handlePermissionDenied(perms);
         return;
     }
 
@@ -1330,7 +1402,7 @@ async function saveItem() {
     // Check permissions first
     const perms = await DashboardData.checkActionPermission();
     if (!perms.allowed) {
-        DashboardUtils.showToast(perms.message, 'error');
+        handlePermissionDenied(perms);
         return;
     }
 
@@ -1455,7 +1527,7 @@ async function deleteItem(id) {
     // Check permissions first
     const perms = await DashboardData.checkActionPermission();
     if (!perms.allowed) {
-        DashboardUtils.showToast(perms.message, 'error');
+        handlePermissionDenied(perms);
         return;
     }
 
@@ -1489,7 +1561,7 @@ async function changePassword(event) {
     // Check permissions first
     const perms = await DashboardData.checkActionPermission();
     if (!perms.allowed) {
-        DashboardUtils.showToast(perms.message, 'error');
+        handlePermissionDenied(perms);
         return;
     }
 
@@ -1516,7 +1588,7 @@ async function handleImport(event) {
     // Check permissions first
     const perms = await DashboardData.checkActionPermission();
     if (!perms.allowed) {
-        DashboardUtils.showToast(perms.message, 'error');
+        handlePermissionDenied(perms);
         return;
     }
 
@@ -1541,7 +1613,7 @@ async function handleClearCloud() {
     // Check permissions first
     const perms = await DashboardData.checkActionPermission();
     if (!perms.allowed) {
-        DashboardUtils.showToast(perms.message, 'error');
+        handlePermissionDenied(perms);
         return;
     }
 
@@ -1563,4 +1635,9 @@ window.openFeedbackDetail = openFeedbackDetail;
 window.deleteCurrentFeedback = deleteCurrentFeedback;
 window.deleteFeedbackItem = deleteFeedbackItem;
 
-document.addEventListener('DOMContentLoaded', checkAuth);
+document.addEventListener('DOMContentLoaded', () => {
+    checkAuth();
+    // Start session inactivity tracking
+    resetSessionActivityTimer();
+    setupSessionActivityListeners();
+});
