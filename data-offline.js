@@ -116,7 +116,7 @@
          * Initialize - loads cached data first, then fetches fresh data if online
          */
         async init(options = {}) {
-            // 🔧 FIX 3: Auto-initialize cache from localStorage
+            // Auto-initialize cache from localStorage
             this.initCache();
 
             const opts = {
@@ -132,55 +132,88 @@
             setupConnectivityListeners();
 
             // Load cached data first (instant, works offline)
-            const statsCached = this.cache.stats || getLocalCacheData('stats');
+            // Prefer the structured app_cache first
+            const cached = this.cache.stats ? this.cache : null;
+            const statsCached = cached?.stats || getLocalCacheData('stats');
+
             if (opts.loadStats && statsCached) {
-                updateStatsUI(statsCached);
-                console.log('[OfflineManager] Stats from cache');
+                // Use renderStats (creates full grid) instead of updateStatsUI
+                if (typeof renderStats === 'function') {
+                    renderStats(statsCached);
+                    console.log('[OfflineManager] Stats from cache (renderStats)');
+                } else {
+                    // Fallback to legacy updateStatsUI if renderStats not available
+                    updateStatsUI(statsCached);
+                }
             }
 
-            const announcementsCached = this.cache.announcements || (() => {
+            const announcementsCached = cached?.announcements || getLocalCacheData('announcements_list_all');
+            // Fallback to legacy cache lookup
+            const annLegacy = !announcementsCached ? (() => {
                 try {
-                    // Try to find any announcements_list_* key in dashboard_data_cache
                     const raw = JSON.parse(localStorage.getItem(CACHE_KEY) || '{}');
                     const key = Object.keys(raw).find(k => k.startsWith('announcements_list_'));
                     return key ? raw[key] : null;
                 } catch { return null; }
-            })();
-            if (opts.loadAnnouncements && announcementsCached) {
-                updateAnnouncementsUI(announcementsCached);
+            })() : null;
+
+            if (opts.loadAnnouncements && (announcementsCached || annLegacy)) {
+                if (typeof renderAnnouncements === 'function') {
+                    renderAnnouncements(announcementsCached || annLegacy);
+                } else {
+                    updateAnnouncementsUI(announcementsCached || annLegacy);
+                }
             }
 
-            const assignmentsCached = this.cache.assignments || (() => {
+            const assignmentsCached = cached?.assignments || getLocalCacheData('assignments_list_all');
+            const asgLegacy = !assignmentsCached ? (() => {
                 try {
                     const raw = JSON.parse(localStorage.getItem(CACHE_KEY) || '{}');
                     const key = Object.keys(raw).find(k => k.startsWith('assignments_list_'));
                     return key ? raw[key] : null;
                 } catch { return null; }
-            })();
-            if (opts.loadAssignments && assignmentsCached) {
-                updateAssignmentsUI(assignmentsCached);
+            })() : null;
+
+            if (opts.loadAssignments && (assignmentsCached || asgLegacy)) {
+                if (typeof renderAssignments === 'function') {
+                    renderAssignments(assignmentsCached || asgLegacy);
+                } else {
+                    updateAssignmentsUI(assignmentsCached || asgLegacy);
+                }
             }
 
-            const deadlinesCached = this.cache.deadlines || (() => {
+            const deadlinesCached = cached?.deadlines || getLocalCacheData('deadlines_list_all');
+            const dlLegacy = !deadlinesCached ? (() => {
                 try {
                     const raw = JSON.parse(localStorage.getItem(CACHE_KEY) || '{}');
                     const key = Object.keys(raw).find(k => k.startsWith('deadlines_list_'));
                     return key ? raw[key] : null;
                 } catch { return null; }
-            })();
-            if (opts.loadDeadlines && deadlinesCached) {
-                updateDeadlinesUI(deadlinesCached);
+            })() : null;
+
+            if (opts.loadDeadlines && (deadlinesCached || dlLegacy)) {
+                if (typeof renderDeadlines === 'function') {
+                    renderDeadlines(deadlinesCached || dlLegacy);
+                } else {
+                    updateDeadlinesUI(deadlinesCached || dlLegacy);
+                }
             }
 
-            const quizzesCached = this.cache.quizzes || (() => {
+            const quizzesCached = cached?.quizzes || getLocalCacheData('quizzes_list_all');
+            const qzLegacy = !quizzesCached ? (() => {
                 try {
                     const raw = JSON.parse(localStorage.getItem(CACHE_KEY) || '{}');
                     const key = Object.keys(raw).find(k => k.startsWith('quizzes_list_'));
                     return key ? raw[key] : null;
                 } catch { return null; }
-            })();
-            if (opts.loadQuizzes && quizzesCached) {
-                updateQuizzesUI(quizzesCached);
+            })() : null;
+
+            if (opts.loadQuizzes && (quizzesCached || qzLegacy)) {
+                if (typeof renderQuizzes === 'function') {
+                    renderQuizzes(quizzesCached || qzLegacy);
+                } else {
+                    updateQuizzesUI(quizzesCached || qzLegacy);
+                }
             }
 
             // Fetch fresh if online (prefer data-layer flag)
@@ -191,6 +224,10 @@
             } else {
                 console.log('[OfflineManager] Offline - using cached data');
                 updateConnectionUI(false);
+                // Try to show last synced time even when offline
+                if (typeof updateMeta === 'function') {
+                    updateMeta().catch(() => {});
+                }
             }
         },
 
@@ -238,15 +275,35 @@
                 }
 
                 // If this is a full refresh (reconnection), skip initial render - the full refresh block handles everything
-                if (options && options.runFullRefresh) {
+                if (options?.runFullRefresh === true) {
                     // Data fetched and cached - skip rendering here, full refresh block handles UI below
                 } else {
-                    // Normal update: render the fetched data
-                    updateStatsUI(stats);
-                    updateAnnouncementsUI(announcements);
-                    updateAssignmentsUI(assignments);
-                    updateDeadlinesUI(deadlines);
-                    updateQuizzesUI(quizzes);
+                    // Normal update: render the fetched data using render functions
+                    if (typeof renderStats === 'function') {
+                        renderStats(stats);
+                    } else {
+                        updateStatsUI(stats);
+                    }
+                    if (typeof renderAnnouncements === 'function') {
+                        renderAnnouncements(announcements);
+                    } else {
+                        updateAnnouncementsUI(announcements);
+                    }
+                    if (typeof renderAssignments === 'function') {
+                        renderAssignments(assignments);
+                    } else {
+                        updateAssignmentsUI(assignments);
+                    }
+                    if (typeof renderDeadlines === 'function') {
+                        renderDeadlines(deadlines);
+                    } else {
+                        updateDeadlinesUI(deadlines);
+                    }
+                    if (typeof renderQuizzes === 'function') {
+                        renderQuizzes(quizzes);
+                    } else {
+                        updateQuizzesUI(quizzes);
+                    }
                     updateConnectionUI(true);
 
                     // Update server-dot based on whether the data layer reports online
@@ -271,7 +328,7 @@
                 }
 
                 // If requested by caller (reconnection), render using already-fetched data (no re-fetch needed)
-                if (options && options.runFullRefresh) {
+                if (options?.runFullRefresh === true) {
                     try {
                         // Clear legacy cache to force fresh reads on next normal fetch
                         if (window.DashboardData && typeof window.DashboardData.clearLocalCache === 'function') {
@@ -281,13 +338,17 @@
                         // Update meta with fresh settings
                         if (typeof updateMeta === 'function') await updateMeta();
 
-                        // Render stats using already-fetched data (not re-fetching)
-                        if (typeof renderStats === 'function') renderStats(stats);
+                        // Render stats: prefer renderStats (creates full grid), fallback to updateStatsUI
+                        if (typeof renderStats === 'function') {
+                            renderStats(stats);
+                        } else if (typeof updateStatsUI === 'function') {
+                            updateStatsUI(stats);
+                        }
                         if (typeof setServerLiveState === 'function') {
                             setServerLiveState(typeof window.DashboardOnline !== 'undefined' ? !!window.DashboardOnline : navigator.onLine);
                         }
 
-                        // Render content sections using already-fetched data (not re-fetching)
+                        // Render content sections using render functions
                         if (typeof renderAnnouncements === 'function') renderAnnouncements(announcements);
                         if (typeof renderAssignments === 'function') renderAssignments(assignments);
                         if (typeof renderDeadlines === 'function') renderDeadlines(deadlines);

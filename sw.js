@@ -9,6 +9,7 @@ const SHELL_ASSETS = [
     './admin.html',
     './style.css',
     './config.js',
+    './data-offline.js',
     './data.js',
     './script.js',
     './dashboard.js',

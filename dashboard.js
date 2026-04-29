@@ -413,35 +413,24 @@ async function initDashboard(showLoading = true) {
         loadQuizzes: true
     });
 
-    // After OfflineManager.init(), UI is already populated with cached data
-    // Get fresh stats for state tracking
+    // After OfflineManager.init(), UI is already populated with cached/fresh data
+    // Get fresh stats for state tracking ONLY - don't re-render (OfflineManager already did)
     try {
         await updateMeta();
         const statsResult = await DashboardData.getStats();
-        renderStats(statsResult);
-            setServerLiveState(typeof window.DashboardOnline !== 'undefined' ? !!window.DashboardOnline : navigator.onLine);
-        // Store counts for change detection
+        // Store counts only - don't call renderStats again
         dashboardState.counts = {
             announcements: statsResult.totalAnnouncements || 0,
             assignments: statsResult.pendingAssignments || 0,
             quizzes: statsResult.upcomingQuizzes || 0
         };
+        const isOnline = (typeof window.DashboardOnline !== 'undefined') ? !!window.DashboardOnline : navigator.onLine;
+        setServerLiveState(isOnline);
     } catch (error) {
         console.warn('[initDashboard] Could not load stats:', error.message);
     }
 
-    // Load content sections - only when online (data-layer aware) to avoid overwriting cached UI
-    const sectionsOnline = (typeof window.DashboardOnline !== 'undefined') ? !!window.DashboardOnline : navigator.onLine;
-    if (sectionsOnline) {
-        await Promise.all([
-            renderSection(renderAnnouncements, () => DashboardData.getAnnouncements({ limit: 5 }), 'announcements-list'),
-            renderSection(renderAssignments, () => DashboardData.getAssignments({ limit: 4 }), 'assignments-list'),
-            renderSection(renderDeadlines, () => DashboardData.getDeadlines({ limit: 5 }), 'deadlines-list'),
-            renderSection(renderQuizzes, () => DashboardData.getQuizzes({ limit: 4 }), 'quizzes-list')
-        ]);
-    } else {
-        console.log('[initDashboard] Offline - using cached UI data');
-    }
+    // Content sections already rendered by OfflineManager - don't re-render
 
     // Start update polling for detecting new content
     startUpdatePolling();
