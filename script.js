@@ -565,11 +565,6 @@ async function registerServiceWorker() {
         const registration = await navigator.serviceWorker.register('./sw.js');
         console.log('[SW] Registered:', registration);
 
-        // Get cache version from service worker
-        getCacheVersion().then((version) => {
-            updateCacheVersionDisplay(version);
-        }).catch(() => {});
-
         // Listen for updates
         registration.addEventListener('updatefound', () => {
             console.log('[SW] Update found');
@@ -593,53 +588,6 @@ async function registerServiceWorker() {
         }
     } catch (error) {
         console.warn('Service worker registration failed:', error);
-    }
-}
-
-// Get cache version from service worker
-async function getCacheVersion() {
-    if (!navigator.serviceWorker.controller) {
-        // Fallback: try to get from registered sw
-        const reg = await navigator.serviceWorker.getRegistration('./sw.js');
-        if (reg && reg.active) {
-            return trySWMessage(reg.active);
-        }
-        return null;
-    }
-    return trySWMessage(navigator.serviceWorker.controller);
-}
-
-async function trySWMessage(worker) {
-    return new Promise((resolve) => {
-        const channel = new MessageChannel();
-        channel.port1.onmessage = (event) => {
-            resolve(event.data?.version);
-        };
-        worker.postMessage({ type: 'getVersion' }, [channel.port2]);
-        setTimeout(() => resolve(null), 2000);
-    });
-}
-
-// Update cache version display in UI
-function updateCacheVersionDisplay(version) {
-    if (!version) return;
-
-    // Update home screen settings popup
-    const homeDisplay = document.getElementById('cache-version-display');
-    if (homeDisplay) {
-        const span = homeDisplay.querySelector('span');
-        if (span) {
-            span.textContent = `Cache ${version}`;
-        } else {
-            // Replace the "--" with version
-            homeDisplay.innerHTML = homeDisplay.innerHTML.replace(/Cache --/, `Cache ${version}`);
-        }
-    }
-
-    // Update admin header
-    const adminHeader = document.querySelector('.header-cache-version');
-    if (adminHeader) {
-        adminHeader.textContent = version;
     }
 }
 
@@ -738,11 +686,6 @@ function closePwaBanner() {
 window.installPwa = installPwa;
 window.dismissPwaBanner = dismissPwaBanner;
 window.closePwaBanner = closePwaBanner;
-window.getCacheVersion = getCacheVersion;
-window.updateCacheVersionDisplay = updateCacheVersionDisplay;
-window.toggleSettingsPopup = toggleSettingsPopup;
-window.toggleTheme = toggleTheme;
-window.openFeedbackModal = openFeedbackModal;
 
 window.DashboardUtils = {
     TIME_ZONE_LABEL,

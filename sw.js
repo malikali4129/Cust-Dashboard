@@ -1,7 +1,7 @@
-const CACHE_VERSION = 'v28';
-const SHELL_CACHE = `dash-shell-${CACHE_VERSION}`;
-const DATA_CACHE = `dash-data-${CACHE_VERSION}`;
-const OFFLINE_CACHE = `dash-offline-${CACHE_VERSION}`;
+const CACHE_VERSION = 'v27';
+const SHELL_CACHE = `dashboard-shell-${CACHE_VERSION}`;
+const FONT_CACHE = `dashboard-fonts-${CACHE_VERSION}`;
+const DATA_CACHE = `dashboard-data-${CACHE_VERSION}`;
 
 const SHELL_ASSETS = [
     './',
@@ -21,16 +21,7 @@ const FONT_ORIGINS = [
     'https://fonts.gstatic.com'
 ];
 
-// Pre-cache data routes for offline (these will be populated on first successful fetch)
-const DATA_ROUTES = [
-    '/rest/v1/announcements',
-    '/rest/v1/assignments',
-    '/rest/v1/deadlines',
-    '/rest/v1/quizzes',
-    '/rest/v1/settings'
-];
-
-// Install: pre-cache shell assets
+// ─── Install: pre-cache shell (per-asset so one failure doesn't block all) ──
 self.addEventListener('install', (event) => {
     event.waitUntil(
         caches.open(SHELL_CACHE).then(async (cache) => {
@@ -38,60 +29,40 @@ self.addEventListener('install', (event) => {
                 try {
                     await cache.add(asset);
                 } catch (err) {
-                    console.warn(`[SW] Shell cache ${asset}:`, err.message);
+                    // Per-asset failure — log and continue (assets may succeed on next load)
+                    console.warn(`[SW] Could not cache ${asset}:`, err.message);
                 }
             }
-        }).then(() => {
-            // Also open data and offline caches for future use
-            return Promise.all([
-                caches.open(DATA_CACHE),
-                caches.open(OFFLINE_CACHE)
-            ]);
         })
     );
     self.skipWaiting();
 });
 
-// Activate: clean old caches
+// ─── Activate: purge old caches ─────────────────────────────────────────────
 self.addEventListener('activate', (event) => {
     event.waitUntil(
         caches.keys().then((keys) => Promise.all(
             keys
                 .filter((key) =>
-                    key.startsWith('dash-') &&
+                    key.startsWith('dashboard-') &&
                     key !== SHELL_CACHE &&
-                    key !== DATA_CACHE &&
-                    key !== OFFLINE_CACHE
+                    key !== FONT_CACHE &&
+                    key !== DATA_CACHE
                 )
                 .map((key) => caches.delete(key))
-        )).then(() => self.clients.claim()))
+        ))
     );
+    self.clients.claim();
 });
 
-// Message handler for client
+// Handle messages from client (e.g., skip waiting and activate new version)
 self.addEventListener('message', (event) => {
-    if (event.data?.type === 'skipWaiting') {
+    if (event.data && event.data.type === 'skipWaiting') {
         self.skipWaiting();
     }
-    // Return cache version to client
-    if (event.data?.type === 'getVersion') {
-        event.ports[0]?.postMessage({ version: CACHE_VERSION });
-    }
-    // Handle cache data request from client
-    if (event.data?.type === 'cacheData') {
-        const { url, data } = event.data;
-        if (url && data) {
-            caches.open(DATA_CACHE).then((cache) => {
-                const response = new Response(JSON.stringify(data), {
-                    headers: { 'Content-Type': 'application/json' }
-                });
-                cache.put(url, response);
-            });
-        }
-    }
 });
 
-// Fetch handler
+// ─── Fetch: handle different request types ──────────────────────────────────
 self.addEventListener('fetch', (event) => {
     if (event.request.method !== 'GET') {
         return;
@@ -99,20 +70,20 @@ self.addEventListener('fetch', (event) => {
 
     const url = new URL(event.request.url);
 
-    // Skip cross-origin except fonts
+    // Skip cross-origin requests except for Google Fonts
     if (url.origin !== self.location.origin && !FONT_ORIGINS.includes(url.origin)) {
         return;
     }
 
     // Google Fonts: stale-while-revalidate
     if (FONT_ORIGINS.includes(url.origin)) {
-        event.respondWith(staleWhileRevalidate(event.request, SHELL_CACHE));
+        event.respondWith(staleWhileRevalidate(event.request, FONT_CACHE));
         return;
     }
 
-    // API requests (Supabase): cache-first with network fallback
+    // Supabase API requests: network-first to get fresh data
     if (url.host.includes('supabase') || url.pathname.startsWith('/rest/v1/')) {
-        event.respondWith(cacheFirstNetworkFallback(event.request, DATA_CACHE));
+        event.respondWith(networkFirst(event.request, DATA_CACHE));
         return;
     }
 
@@ -120,183 +91,102 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(staleWhileRevalidate(event.request, SHELL_CACHE));
 });
 
-// Cache-first: serve from cache, fallback to network, update cache
-async function cacheFirstNetworkFallback(request, cacheName) {
-    const cache = await caches.open(cacheName);
-    const cachedResponse = await cache.match(request);
+function staleWhileRevalidate(request, cacheName) {
+    return caches.open(cacheName).then(async (cache) => {
+        const cached = await cache.match(request);
 
-    if (cachedResponse) {
-        // Return cached immediately, then try to update in background
-        fetchAndCache(request, cache).catch(() => {});
-        return cachedResponse;
-    }
-
-    // No cache - try network
-    try {
-        const networkResponse = await fetch(request);
-        if (networkResponse.ok) {
-            cache.put(request, networkResponse.clone());
-        }
-        return networkResponse;
-    } catch (error) {
-        // Network failed - try to find any cached API response
-        const fallback = await findApiFallback(cache, request.url);
-        if (fallback) {
-            return fallback;
+        // Never serve a redirect from cache — Safari blocks redirect responses
+        const cachedIsRedirect = cached && cached.redirected;
+        if (cachedIsRedirect) {
+            await cache.delete(request);
         }
 
-        // Return empty data response for API endpoints
-        const path = new URL(request.url).pathname;
-        if (path.includes('/announcements')) {
-            return jsonResponse([]);
-        }
-        if (path.includes('/assignments')) {
-            return jsonResponse([]);
-        }
-        if (path.includes('/deadlines')) {
-            return jsonResponse([]);
-        }
-        if (path.includes('/quizzes')) {
-            return jsonResponse([]);
-        }
-        if (path.includes('/settings')) {
-            return jsonResponse([{ id: 1, last_updated: null }]);
+        // If cache has a valid (non-redirect) response, return it immediately
+        if (cached && !cachedIsRedirect) {
+            // Even if online, return cached immediately for speed
+            fetchAndCache(request, cache).catch(() => {});
+            return cached;
         }
 
-        // No fallback available - return offline page
-        return offlinePage();
-    }
-}
-
-// Find any cached API response as fallback
-async function findApiFallback(cache, urlPath) {
-    const keys = await cache.keys();
-    for (const key of keys) {
-        if (key.url.includes(urlPath.split('?')[0])) {
-            const response = await cache.match(key);
-            if (response) {
-                return response;
+        // No valid cache — try network
+        try {
+            const response = await fetch(request);
+            if (response.ok && !response.redirected) {
+                cache.put(request, response.clone());
             }
-        }
-    }
-    return null;
-}
-
-// Stale-while-revalidate: serve cached, fetch update in background
-async function staleWhileRevalidate(request, cacheName) {
-    const cache = await caches.open(cacheName);
-    const cachedResponse = await cache.match(request);
-
-    // Check for redirect and clear if found
-    if (cachedResponse?.redirected) {
-        await cache.delete(request);
-    }
-
-    if (cachedResponse && !cachedResponse.redirected) {
-        // Return cached immediately
-        fetchAndCache(request, cache).catch(() => {});
-        return cachedResponse;
-    }
-
-    // No cache - try network
-    try {
-        const networkResponse = await fetch(request);
-        if (networkResponse.ok && !networkResponse.redirected) {
-            cache.put(request, networkResponse.clone());
-        }
-        return networkResponse;
-    } catch (error) {
-        // Try fallback HTML page
-        const fallback = await findHtmlFallback(cache);
-        if (fallback) {
-            return fallback;
-        }
-        return offlinePage();
-    }
-}
-
-// Find any cached HTML page
-async function findHtmlFallback(cache) {
-    const keys = await cache.keys();
-    for (const key of keys) {
-        if (key.url.endsWith('.html') || key.url.endsWith('/')) {
-            const response = await cache.match(key);
-            if (response && !response.redirected) {
-                return response;
+            return response;
+        } catch (_) {
+            // Offline + no cache — try to serve ANY cached HTML page as last resort
+            const entries = await cache.keys();
+            for (const req of entries) {
+                if (req.url.endsWith('.html') || req.url.endsWith('/')) {
+                    const fallback = await cache.match(req);
+                    if (fallback && !fallback.redirected) {
+                        return fallback;
+                    }
+                }
             }
+            // Truly nothing cached — return a minimal offline page
+            return new Response(
+                '<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Offline</title><style>body{margin:0;display:flex;align-items:center;justify-content:center;min-height:100vh;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#0b0f19;color:#e2e8f0;flex-direction:column;text-align:center;padding:2rem}svg{width:48px;height:48px;margin-bottom:1.5rem;opacity:.4}h2{font-size:1.5rem;margin:0 0 .75rem;font-weight:700;color:#c4b5fd}p{color:#94a3b8;font-size:.95rem;margin:0;max-width:300px;line-height:1.6}</style></head><body><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 2l20 20M8.5 5.5A7 7 0 0 1 18 9c-3.75 3.75-7 7-7 11m-4-7a7 7 0 0 1 7 7"/></svg><h2>You are offline</h2><p>Connect to the internet to load this page. Cached content is available when online.</p></body></html>',
+                { headers: { 'Content-Type': 'text/html; charset=utf-8' } }
+            );
         }
-    }
-    return null;
+    });
 }
 
-// Background fetch and cache
 async function fetchAndCache(request, cache) {
     try {
         const response = await fetch(request);
         if (response.ok && !response.redirected) {
             cache.put(request, response.clone());
         }
-    } catch (error) {
-        // Ignore network errors
+    } catch (_) {
+        // Network failed — that's fine, we already served the cached response
     }
 }
 
-// Helper: create JSON response
-function jsonResponse(data) {
-    return new Response(JSON.stringify(data), {
-        headers: { 'Content-Type': 'application/json' }
-    });
+// Cache-first for API data: try cache, fall back to network, store result
+async function cacheFirstWithFallback(request, cacheName) {
+    const cache = await caches.open(cacheName);
+    const cached = await cache.match(request);
+    if (cached) {
+        return cached;
+    }
+    try {
+        const response = await fetch(request);
+        if (response.ok) {
+            cache.put(request, response.clone());
+        }
+        return response;
+    } catch (_) {
+        // Return a minimal empty array JSON if truly offline with no cache
+        return new Response(JSON.stringify([]), {
+            headers: { 'Content-Type': 'application/json' }
+        });
+    }
 }
 
-// Offline page response
-function offlinePage() {
-    const html = `<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>Offline - My Cust</title>
-    <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            background: #0b0f19;
-            color: #e2e8f0;
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-direction: column;
-            text-align: center;
-            padding: 2rem;
-        }
-        h1 { font-size: 1.5rem; margin-bottom: 0.5rem; color: #c4b5fd; }
-        p { color: #94a3b8; font-size: 0.95rem; line-height: 1.6; max-width: 300px; }
-        .icon { width: 48px; height: 48px; margin-bottom: 1.5rem; opacity: 0.5; }
-        button {
-            margin-top: 1.5rem;
-            padding: 0.75rem 1.5rem;
-            border-radius: 8px;
-            border: none;
-            background: #6366f1;
-            color: white;
-            font-size: 1rem;
-            cursor: pointer;
-        }
-        button:hover { background: #818cf8; }
-    </style>
-</head>
-<body>
-    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-        <path d="M2 2l20 20M8.5 5.5A7 7 0 0 1 18 9c-3.75 3.75-7 7-7 11m-4-7a7 7 0 0 1 7 7"/>
-    </svg>
-    <h1>You are offline</h1>
-    <p>Connect to the internet to load fresh data. Cached content is available when online.</p>
-    <button onclick="window.location.reload()">Retry</button>
-</body>
-</html>`;
+// Network-first + cache for API data
+async function networkFirst(request, cacheName) {
+    const cache = await caches.open(cacheName);
 
-    return new Response(html, {
-        headers: { 'Content-Type': 'text/html; charset=utf-8' }
-    });
+    try {
+        const response = await fetch(request);
+        // Always cache successful responses
+        if (response.ok) {
+            cache.put(request, response.clone()).catch(() => {});
+        }
+        return response;
+    } catch (netError) {
+        // Network failed - try cache as fallback
+        const cached = await cache.match(request);
+        if (cached) {
+            return cached;
+        }
+        // No cache either - return empty (not throw)
+        return new Response(JSON.stringify([]), {
+            headers: { 'Content-Type': 'application/json' }
+        });
+    }
 }

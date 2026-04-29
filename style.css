@@ -546,17 +546,6 @@ svg {
   flex-shrink: 0;
 }
 
-.popup-info {
-  cursor: default;
-  color: var(--text-muted);
-  font-size: 0.8rem;
-}
-
-.popup-info:hover {
-  background: transparent;
-  color: var(--text-muted);
-}
-
 .header-meta-item:hover {
   border-color: var(--border-hover);
   background: var(--bg-surface-hover);
@@ -1060,7 +1049,7 @@ input[type="time"]::-webkit-calendar-picker-indicator:hover {
   border-bottom: none;
 }
 
-/* Preloader & Load Animations */
+/* ---------- Preloader & Load Animations ---------- */
 .preloader {
   position: fixed;
   inset: 0;
@@ -1074,30 +1063,6 @@ input[type="time"]::-webkit-calendar-picker-indicator:hover {
 .preloader.hidden {
   opacity: 0;
   visibility: hidden;
-}
-.preloader-content {
-  text-align: center;
-  margin-top: 1.5rem;
-}
-.preloader-title {
-  font-size: 1.25rem;
-  font-weight: 700;
-  color: var(--text);
-  margin-bottom: 0.5rem;
-}
-.preloader-status {
-  font-size: 0.875rem;
-  color: var(--text-secondary);
-  margin-bottom: 0.75rem;
-}
-.preloader-status.is-offline {
-  color: var(--warning);
-}
-.preloader-status.is-error {
-  color: var(--danger);
-}
-.preloader-actions {
-  margin-top: 1rem;
 }
 
 /* Loading animation */
@@ -2944,16 +2909,6 @@ body.client-dashboard .dashboard-header {
   font-weight: 800;
   color: var(--text);
   letter-spacing: -0.02em;
-}
-
-.header-cache-version,
-.admin-header-left .header-cache-version {
-  font-size: 0.7rem;
-  font-weight: 500;
-  color: var(--text-muted);
-  background: var(--bg-surface);
-  padding: 2px 6px;
-  border-radius: var(--radius-sm);
 }
 
 .connection-dot {
