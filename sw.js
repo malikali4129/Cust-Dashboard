@@ -55,20 +55,16 @@ self.addEventListener('install', (event) => {
 // Activate: clean old caches
 self.addEventListener('activate', (event) => {
     event.waitUntil(
-        caches.keys().then((keys) => {
-            return Promise.all(
-                keys
-                    .filter((key) =>
-                        key.startsWith('dash-') &&
-                        key !== SHELL_CACHE &&
-                        key !== DATA_CACHE &&
-                        key !== OFFLINE_CACHE
-                    )
-                    .map((key) => caches.delete(key))
-            );
-        }).then(() => {
-            return self.clients.claim();
-        })
+        caches.keys().then((keys) => Promise.all(
+            keys
+                .filter((key) =>
+                    key.startsWith('dash-') &&
+                    key !== SHELL_CACHE &&
+                    key !== DATA_CACHE &&
+                    key !== OFFLINE_CACHE
+                )
+                .map((key) => caches.delete(key))
+        )).then(() => self.clients.claim()))
     );
 });
 
