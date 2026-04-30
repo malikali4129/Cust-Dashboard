@@ -87,7 +87,7 @@ function renderAnnouncements(items) {
         return;
     }
 
-    container.innerHTML = items.map((item) => `
+    container.innerHTML = items.slice(0, 3).map((item) => `
         <button class="info-card ${item.priority === 'high' ? 'is-urgent' : ''}" onclick="openDetailModal('announcement', '${item.id}')">
             <div class="info-card-top">
                 <div>
@@ -112,7 +112,7 @@ function renderAssignments(items) {
         return;
     }
 
-    container.innerHTML = items.map((item) => `
+    container.innerHTML = items.slice(0, 3).map((item) => `
         <button class="info-card" onclick="openDetailModal('assignment', '${item.id}')">
             <div class="info-card-top">
                 <div>
@@ -141,7 +141,7 @@ function renderDeadlines(items) {
         return;
     }
 
-    container.innerHTML = items.map((item) => {
+    container.innerHTML = items.slice(0, 3).map((item) => {
         const dateInfo = DashboardUtils.formatDateShort(item.date, dashboardState.timeZone);
         return `
             <button class="info-card compact-card" onclick="openDetailModal('deadline', '${item.id}')">
@@ -170,7 +170,7 @@ function renderQuizzes(items) {
         return;
     }
 
-    container.innerHTML = items.map((item) => `
+    container.innerHTML = items.slice(0, 3).map((item) => `
         <button class="info-card" onclick="openDetailModal('quiz', '${item.id}')">
             <div>
                 <h3>${DashboardUtils.escapeHtml(item.title)}</h3>
@@ -183,6 +183,161 @@ function renderQuizzes(items) {
             </div>
         </button>
     `).join('');
+}
+
+// ─── View All Modal ───────────────────────────────────────────────────────────
+const viewAllState = {
+    currentSection: null,
+    allItems: null,
+    activeTab: 'pending'
+};
+
+function getItemStatus(item, section) {
+    const completed = item.status === 'completed' || item.completed === true;
+    return completed ? 'completed' : 'pending';
+}
+
+async function openViewAllModal(section) {
+    const modal = document.getElementById('view-all-modal');
+    const title = document.getElementById('view-all-modal-title');
+    const body = document.getElementById('view-all-modal-body');
+
+    if (!modal || !title || !body) return;
+
+    viewAllState.currentSection = section;
+    viewAllState.activeTab = 'pending';
+
+    const titles = {
+        announcements: 'Announcements',
+        assignments: 'Assignments',
+        deadlines: 'Deadlines',
+        quizzes: 'Quizzes'
+    };
+    title.textContent = titles[section] || 'All Items';
+
+    // Reset tab UI
+    document.querySelectorAll('.view-all-tab').forEach(tab => {
+        tab.classList.toggle('active', tab.dataset.tab === 'pending');
+    });
+
+    body.innerHTML = '<div class="panel-loading">Loading...</div>';
+    DashboardUtils.openModal('view-all-modal');
+
+    try {
+        let items = [];
+        if (section === 'announcements') {
+            items = await DashboardData.getAnnouncements();
+        } else if (section === 'assignments') {
+            items = await DashboardData.getAssignments();
+        } else if (section === 'deadlines') {
+            items = await DashboardData.getDeadlines();
+        } else if (section === 'quizzes') {
+            items = await DashboardData.getQuizzes();
+        }
+        viewAllState.allItems = items;
+        renderViewAllBody('pending');
+    } catch (error) {
+        body.innerHTML = '<div class="panel-loading error">Could not load items.</div>';
+    }
+}
+
+function renderViewAllBody(tab) {
+    const body = document.getElementById('view-all-modal-body');
+    if (!body) return;
+
+    viewAllState.activeTab = tab;
+
+    // Update tab active states
+    document.querySelectorAll('.view-all-tab').forEach(t => {
+        t.classList.toggle('active', t.dataset.tab === tab);
+    });
+
+    const section = viewAllState.currentSection;
+    const items = viewAllState.allItems || [];
+    const filtered = items.filter(item => getItemStatus(item, section) === tab);
+
+    if (filtered.length === 0) {
+        body.innerHTML = `
+            <div class="view-all-empty">
+                <div class="view-all-empty-icon">&#x2713;</div>
+                <h4>No ${tab} items</h4>
+                <p>${tab === 'pending' ? 'Nothing waiting on you right now.' : 'Completed items will appear here.'}</p>
+            </div>
+        `;
+        return;
+    }
+
+    body.innerHTML = filtered.map(item => renderViewAllItem(item, section)).join('');
+}
+
+function renderViewAllItem(item, section) {
+    const escapedTitle = DashboardUtils.escapeHtml(item.title || 'Untitled');
+    const escapedContent = DashboardUtils.escapeHtml(item.content || item.description || '');
+
+    if (section === 'announcements') {
+        return `
+            <button class="view-all-item" onclick="openDetailModal('announcement', '${item.id}')">
+                <div class="view-all-item-header">
+                    <h3>${escapedTitle}</h3>
+                    <time>${DashboardUtils.getRelativeTime(item.date)}</time>
+                </div>
+                <p>${escapedContent}</p>
+                <div class="view-all-item-meta">
+                    <span class="badge badge-${item.priority || 'normal'}">${DashboardUtils.escapeHtml(item.priority || 'normal')}</span>
+                </div>
+            </button>
+        `;
+    }
+
+    if (section === 'assignments') {
+        return `
+            <button class="view-all-item" onclick="openDetailModal('assignment', '${item.id}')">
+                <div class="view-all-item-header">
+                    <h3>${escapedTitle}</h3>
+                    <span class="badge badge-${item.status}">${DashboardUtils.escapeHtml(item.status)}</span>
+                </div>
+                <p>${escapedContent}</p>
+                <div class="view-all-item-meta">
+                    <span>${DashboardUtils.formatLongDate(item.deadline, dashboardState.timeZone)}</span>
+                    <span>${DashboardUtils.escapeHtml(item.subject || 'General')}</span>
+                </div>
+            </button>
+        `;
+    }
+
+    if (section === 'deadlines') {
+        const dateInfo = DashboardUtils.formatDateShort(item.date, dashboardState.timeZone);
+        return `
+            <button class="view-all-item" onclick="openDetailModal('deadline', '${item.id}')">
+                <div class="view-all-item-header">
+                    <h3>${escapedTitle}</h3>
+                    <time>${dateInfo.day} ${dateInfo.month}</time>
+                </div>
+                <p>${escapedContent}</p>
+                <div class="view-all-item-meta">
+                    <span class="badge badge-${item.priority}">${DashboardUtils.escapeHtml(item.priority)}</span>
+                    <span>${DashboardUtils.escapeHtml(item.category || 'General')}</span>
+                    <span>${DashboardUtils.formatLongDate(item.date, dashboardState.timeZone)}</span>
+                </div>
+            </button>
+        `;
+    }
+
+    // quizzes
+    return `
+        <button class="view-all-item" onclick="openDetailModal('quiz', '${item.id}')">
+            <div class="view-all-item-header">
+                <h3>${escapedTitle}</h3>
+                <span>${item.totalMarks || '-'} marks</span>
+            </div>
+            <p>${escapedContent}</p>
+            <div class="view-all-item-meta">
+                <span>${item.duration} min</span>
+                <span>${DashboardUtils.formatLongDate(item.date, dashboardState.timeZone)}</span>
+                <span>${DashboardUtils.escapeHtml(item.subject || 'General')}</span>
+            </div>
+        </button>
+    `;
 }
 
 function emptyState(title, copy) {
@@ -642,6 +797,13 @@ document.addEventListener('DOMContentLoaded', () => {
     resetSessionActivityTimer();
     setupSessionActivityListeners();
 
+    // Tab switching for View All modal
+    document.querySelectorAll('.view-all-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+            renderViewAllBody(tab.dataset.tab);
+        });
+    });
+
     // Listen for data changes from admin (delete, create, update)
     window.addEventListener('dataChanged', async () => {
         console.log('[Dashboard] Data changed - refreshing...');
@@ -691,6 +853,8 @@ function closeLoginModal() {
 }
 
 window.openDetailModal = openDetailModal;
+window.openViewAllModal = openViewAllModal;
+window.renderViewAllBody = renderViewAllBody;
 window.openFeedbackModal = openFeedbackModal;
 window.submitFeedback = submitFeedback;
 window.closeLoginModal = closeLoginModal;

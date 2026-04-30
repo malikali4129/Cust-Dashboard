@@ -123,30 +123,31 @@
                 <section id="announcements" class="panel dashboard-section section-wide">
                     <div class="section-heading">
                         <h2>Announcements</h2>
+                        <button class="view-all-btn" type="button" onclick="openViewAllModal('announcements')">View All</button>
                     </div>
                     <div id="announcements-list"></div>
                 </section>
 
                 <section id="assignments" class="panel dashboard-section">
                     <div class="section-heading">
-                        <p class="eyebrow">Assignments</p>
                         <h2>Assignments</h2>
+                        <button class="view-all-btn" type="button" onclick="openViewAllModal('assignments')">View All</button>
                     </div>
                     <div id="assignments-list"></div>
                 </section>
 
                 <section id="deadlines" class="panel dashboard-section">
                     <div class="section-heading">
-                        <p class="eyebrow">Deadlines</p>
                         <h2>Deadlines</h2>
+                        <button class="view-all-btn" type="button" onclick="openViewAllModal('deadlines')">View All</button>
                     </div>
                     <div id="deadlines-list"></div>
                 </section>
 
                 <section id="quizzes" class="panel dashboard-section">
                     <div class="section-heading">
-                        <p class="eyebrow">Quizzes</p>
                         <h2>Quizzes</h2>
+                        <button class="view-all-btn" type="button" onclick="openViewAllModal('quizzes')">View All</button>
                     </div>
                     <div id="quizzes-list"></div>
                 </section>
@@ -161,6 +162,20 @@
                 </div>
             </div>
         </footer>
+    </div>
+
+    <div id="view-all-modal" class="modal-overlay">
+        <div class="modal view-all-modal">
+            <div class="modal-header">
+                <h3 id="view-all-modal-title">All Items</h3>
+                <button class="modal-close" type="button" onclick="DashboardUtils.closeModal('view-all-modal')">Close</button>
+            </div>
+            <div class="view-all-tabs">
+                <button class="view-all-tab active" data-tab="pending" type="button">Pending</button>
+                <button class="view-all-tab" data-tab="completed" type="button">Completed</button>
+            </div>
+            <div id="view-all-modal-body" class="modal-body"></div>
+        </div>
     </div>
 
     <div id="detail-modal" class="modal-overlay">
