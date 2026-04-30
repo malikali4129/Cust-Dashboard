@@ -407,8 +407,8 @@ svg {
   right: 0;
   height: calc(var(--header-height) + env(safe-area-inset-top, 0px));
   background: rgba(11, 15, 25, 0.85);
-  backdrop-filter: blur(12px) saturate(180%);
-  -webkit-backdrop-filter: blur(12px) saturate(180%);
+  backdrop-filter: blur(6px) saturate(180%);
+  -webkit-backdrop-filter: blur(6px) saturate(180%);
   border-bottom: 1px solid var(--border);
   display: flex;
   align-items: center;
@@ -585,7 +585,6 @@ svg {
   grid-template-columns: repeat(2, 1fr);
   gap: var(--space-4);
   /*change this to change distance between top bar and stats or count cards*/
-  margin-top: -2rem;
   margin-bottom: var(--space-6);
 }
 
