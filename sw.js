@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'v4';
+const CACHE_VERSION = 'v1';
 const SHELL_CACHE = `dashboard-shell-${CACHE_VERSION}`;
 const FONT_CACHE = `dashboard-fonts-${CACHE_VERSION}`;
 const DATA_CACHE = `dashboard-data-${CACHE_VERSION}`;
