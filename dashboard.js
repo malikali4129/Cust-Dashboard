@@ -220,7 +220,8 @@ async function openViewAllModal(section) {
         tab.classList.toggle('active', tab.dataset.tab === 'pending');
     });
 
-    body.innerHTML = '<div class="panel-loading">Loading...</div>';
+    body.innerHTML = '';
+    renderViewAllSkeleton();
     DashboardUtils.openModal('view-all-modal');
 
     try {
@@ -235,15 +236,40 @@ async function openViewAllModal(section) {
             items = await DashboardData.getQuizzes();
         }
         viewAllState.allItems = items;
-        renderViewAllBody('pending');
+
+        // Brief pause so skeleton shimmer shows, then stream items in progressively
+        await new Promise(resolve => setTimeout(resolve, 200));
+        await renderViewAllBody('pending');
     } catch (error) {
         body.innerHTML = '<div class="panel-loading error">Could not load items.</div>';
     }
 }
 
-function renderViewAllBody(tab) {
+function renderViewAllSkeleton() {
     const body = document.getElementById('view-all-modal-body');
     if (!body) return;
+    body.innerHTML = `
+        <div class="view-all-skeleton">
+            ${[1, 2, 3].map(() => '<div class="skeleton-item"></div>').join('')}
+        </div>
+    `;
+    body.classList.add('scrollable');
+}
+
+async function renderViewAllBody(tab) {
+    const body = document.getElementById('view-all-modal-body');
+    if (!body) return;
+
+    // Guard: if no data loaded yet, show skeleton
+    if (!viewAllState.allItems || viewAllState.allItems.length === 0) {
+        body.classList.add('scrollable');
+        body.innerHTML = `
+            <div class="view-all-skeleton">
+                ${[1, 2, 3].map(() => '<div class="skeleton-item"></div>').join('')}
+            </div>
+        `;
+        return;
+    }
 
     viewAllState.activeTab = tab;
 
@@ -257,6 +283,7 @@ function renderViewAllBody(tab) {
     const filtered = items.filter(item => getItemStatus(item, section) === tab);
 
     if (filtered.length === 0) {
+        body.classList.remove('scrollable');
         body.innerHTML = `
             <div class="view-all-empty">
                 <div class="view-all-empty-icon">&#x2713;</div>
@@ -267,7 +294,28 @@ function renderViewAllBody(tab) {
         return;
     }
 
-    body.innerHTML = filtered.map(item => renderViewAllItem(item, section)).join('');
+    body.classList.add('scrollable');
+    body.innerHTML = ''; // clear skeleton / previous content
+
+    // Stream items in one by one with 400ms gaps — smooth and deliberate
+    let index = 0;
+
+    function insertNext() {
+        if (index >= filtered.length) return;
+
+        const html = renderViewAllItem(filtered[index], section);
+        body.insertAdjacentHTML('beforeend', html);
+        const el = body.lastElementChild;
+        el.style.animationDelay = '0ms';
+        el.classList.add('view-all-content');
+        index++;
+
+        if (index < filtered.length) {
+            setTimeout(insertNext, 150);
+        }
+    }
+
+    insertNext();
 }
 
 function renderViewAllItem(item, section) {
