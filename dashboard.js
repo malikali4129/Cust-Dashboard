@@ -7,10 +7,18 @@ const dashboardState = {
     timeZone: DashboardUtils.TIME_ZONE_LABEL,
     serverLive: false,
     lastUpdated: null,
+    updatePolling: false,   // true while update is being applied (prevents re-trigger)
     counts: {
         announcements: 0,
         assignments: 0,
         quizzes: 0
+    },
+    // Pre-loaded full datasets — used by View All & detail modals so no extra API calls
+    allData: {
+        announcements: [],
+        assignments: [],
+        deadlines: [],
+        quizzes: []
     }
 };
 
@@ -186,10 +194,55 @@ function renderQuizzes(items) {
 }
 
 // ─── View All Modal ───────────────────────────────────────────────────────────
+const VA_CACHE_KEY = 'va_cached_items';
+
 const viewAllState = {
     currentSection: null,
     allItems: null,
-    activeTab: 'pending'
+    activeTab: 'pending',
+    // Per-section cache — survives tab switches, wiped on new data or expiry
+    cachedItems: {}
+};
+
+// ── View All cache helpers ────────────────────────────────────────────────────
+
+function vaGetCached(section) {
+    try {
+        const raw = localStorage.getItem(VA_CACHE_KEY);
+        if (!raw) return null;
+        const { items } = JSON.parse(raw);
+        if (!items) return null;
+        const cached = items[section];
+        if (!cached || cached.length === 0) return null;
+        viewAllState.cachedItems[section] = cached;
+        return cached;
+    } catch {
+        return null;
+    }
+}
+
+function vaSetCached(section, items) {
+    try {
+        const raw = localStorage.getItem(VA_CACHE_KEY);
+        const existing = raw ? JSON.parse(raw) : { items: {} };
+        existing.items[section] = items;
+        localStorage.setItem(VA_CACHE_KEY, JSON.stringify(existing));
+        viewAllState.cachedItems[section] = items;
+    } catch (e) {
+        console.warn('[vaSetCached] localStorage write failed:', e.message);
+    }
+}
+
+function vaClearCache() {
+    try {
+        localStorage.removeItem(VA_CACHE_KEY);
+    } catch {}
+    Object.keys(viewAllState.cachedItems).forEach(k => delete viewAllState.cachedItems[k]);
+}
+
+// Public: called by admin or when you want to force-refresh the View All cache
+window.vaInvalidateCache = function () {
+    vaClearCache();
 };
 
 function getItemStatus(item, section) {
@@ -225,17 +278,9 @@ async function openViewAllModal(section) {
     DashboardUtils.openModal('view-all-modal');
 
     try {
-        let items = [];
-        if (section === 'announcements') {
-            items = await DashboardData.getAnnouncements();
-        } else if (section === 'assignments') {
-            items = await DashboardData.getAssignments();
-        } else if (section === 'deadlines') {
-            items = await DashboardData.getDeadlines();
-        } else if (section === 'quizzes') {
-            items = await DashboardData.getQuizzes();
-        }
-        viewAllState.allItems = items;
+        // Always serve from the pre-loaded in-memory store — zero API calls, always fresh
+        const sectionData = dashboardState.allData[section] || [];
+        viewAllState.allItems = sectionData;
 
         // Brief pause so skeleton shimmer shows, then stream items in progressively
         await new Promise(resolve => setTimeout(resolve, 200));
@@ -470,12 +515,25 @@ async function refreshDashboard() {
     await updateMeta();
     const statsResult = await DashboardData.getStats();
     renderStats(statsResult);
-        setServerLiveState(typeof window.DashboardOnline !== 'undefined' ? !!window.DashboardOnline : navigator.onLine);
-    // Reload all sections
-    renderSection(renderAnnouncements, () => DashboardData.getAnnouncements({ limit: 5 }), 'announcements-list');
-    renderSection(renderAssignments, () => DashboardData.getAssignments({ limit: 4 }), 'assignments-list');
-    renderSection(renderDeadlines, () => DashboardData.getDeadlines({ limit: 5 }), 'deadlines-list');
-    renderSection(renderQuizzes, () => DashboardData.getQuizzes({ limit: 4 }), 'quizzes-list');
+    setServerLiveState(typeof window.DashboardOnline !== 'undefined' ? !!window.DashboardOnline : navigator.onLine);
+
+    // Reload all full datasets (no limit) into memory so View All & detail modals stay fresh
+    const [ann, asg, dl, qz] = await Promise.all([
+        DashboardData.getAnnouncements(),
+        DashboardData.getAssignments(),
+        DashboardData.getDeadlines(),
+        DashboardData.getQuizzes()
+    ]);
+    dashboardState.allData.announcements = ann || [];
+    dashboardState.allData.assignments   = asg || [];
+    dashboardState.allData.deadlines     = dl || [];
+    dashboardState.allData.quizzes       = qz || [];
+
+    // Re-render preview cards (first 3 items only)
+    renderAnnouncements(ann.slice(0, 3));
+    renderAssignments(asg.slice(0, 3));
+    renderDeadlines(dl.slice(0, 3));
+    renderQuizzes(qz.slice(0, 3));
     DashboardUtils.showToast('Data refreshed!', 'success');
 }
 
@@ -493,7 +551,7 @@ async function openDetailModal(type, id) {
         let item;
 
         if (type === 'announcement') {
-            item = (await DashboardData.getAnnouncements()).find((entry) => entry.id === id);
+            item = dashboardState.allData.announcements.find((entry) => entry.id === id);
             title.textContent = item.title;
             body.innerHTML = `
                 <div class="detail-stack">
@@ -506,7 +564,7 @@ async function openDetailModal(type, id) {
         }
 
         if (type === 'assignment') {
-            item = (await DashboardData.getAssignments()).find((entry) => entry.id === id);
+            item = dashboardState.allData.assignments.find((entry) => entry.id === id);
             title.textContent = item.title;
             body.innerHTML = `
                 <div class="detail-stack">
@@ -520,7 +578,7 @@ async function openDetailModal(type, id) {
         }
 
         if (type === 'deadline') {
-            item = (await DashboardData.getDeadlines()).find((entry) => entry.id === id);
+            item = dashboardState.allData.deadlines.find((entry) => entry.id === id);
             title.textContent = item.title;
             body.innerHTML = `
                 <div class="detail-stack">
@@ -532,7 +590,7 @@ async function openDetailModal(type, id) {
             return;
         }
 
-        item = (await DashboardData.getQuizzes()).find((entry) => entry.id === id);
+        item = dashboardState.allData.quizzes.find((entry) => entry.id === id);
         title.textContent = item.title;
         body.innerHTML = `
             <div class="detail-stack">
@@ -703,6 +761,23 @@ async function initDashboard(showLoading = true) {
         console.warn('[initDashboard] Could not load stats:', error.message);
     }
 
+    // Pre-load FULL datasets into memory so View All & detail modals never need an API call
+    // These are refreshed whenever the polling detects a database change
+    try {
+        const [ann, asg, dl, qz] = await Promise.all([
+            DashboardData.getAnnouncements(),
+            DashboardData.getAssignments(),
+            DashboardData.getDeadlines(),
+            DashboardData.getQuizzes()
+        ]);
+        dashboardState.allData.announcements = ann || [];
+        dashboardState.allData.assignments   = asg || [];
+        dashboardState.allData.deadlines    = dl || [];
+        dashboardState.allData.quizzes      = qz || [];
+    } catch (e) {
+        console.warn('[initDashboard] Could not pre-load all data:', e.message);
+    }
+
     // Content sections already rendered by OfflineManager - don't re-render
 
     // Start update polling for detecting new content
@@ -783,21 +858,26 @@ async function startUpdatePolling() {
                 dashboardState.lastUpdated = currentLastUpdated;
                 dashboardState.counts = newCounts;
 
-                // Re-fetch data via direct render (skip OfflineManager init to avoid triggering another fetch loop)
-                // We already have fresh data from getStats above - just re-render without calling OfflineManager
+                // Re-fetch ALL data (no limit) so View All & detail modals stay fresh
                 const freshData = await Promise.all([
-                    DashboardData.getAnnouncements({ limit: 5 }),
-                    DashboardData.getAssignments({ limit: 4 }),
-                    DashboardData.getDeadlines({ limit: 5 }),
-                    DashboardData.getQuizzes({ limit: 4 })
+                    DashboardData.getAnnouncements(),
+                    DashboardData.getAssignments(),
+                    DashboardData.getDeadlines(),
+                    DashboardData.getQuizzes()
                 ]);
 
-                // Render stats FIRST so the grid updates immediately
+                // Update in-memory store — View All / detail read from here
+                dashboardState.allData.announcements = freshData[0] || [];
+                dashboardState.allData.assignments   = freshData[1] || [];
+                dashboardState.allData.deadlines    = freshData[2] || [];
+                dashboardState.allData.quizzes      = freshData[3] || [];
+
+                // Render preview cards (first 3 items only)
                 renderStats(newStats);
-                renderAnnouncements(freshData[0]);
-                renderAssignments(freshData[1]);
-                renderDeadlines(freshData[2]);
-                renderQuizzes(freshData[3]);
+                renderAnnouncements(freshData[0].slice(0, 3));
+                renderAssignments(freshData[1].slice(0, 3));
+                renderDeadlines(freshData[2].slice(0, 3));
+                renderQuizzes(freshData[3].slice(0, 3));
             }
         } catch (error) {
             // Check for session expired / auth errors
@@ -860,10 +940,10 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log('[Dashboard] Fetching fresh data...');
             const [stats, ann, asg, dl, qz] = await Promise.all([
                 DashboardData.getStats(),
-                DashboardData.getAnnouncements({ limit: 5 }),
-                DashboardData.getAssignments({ limit: 4 }),
-                DashboardData.getDeadlines({ limit: 5 }),
-                DashboardData.getQuizzes({ limit: 4 })
+                DashboardData.getAnnouncements(),
+                DashboardData.getAssignments(),
+                DashboardData.getDeadlines(),
+                DashboardData.getQuizzes()
             ]);
 
             console.log('[Dashboard] Got stats:', stats);
@@ -875,14 +955,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 quizzes: stats.upcomingQuizzes || 0
             };
 
+            // Update in-memory store
+            dashboardState.allData.announcements = ann || [];
+            dashboardState.allData.assignments   = asg || [];
+            dashboardState.allData.deadlines    = dl || [];
+            dashboardState.allData.quizzes      = qz || [];
+
             console.log('[Dashboard] Calling renderStats with:', stats);
 
             // Re-render all UI
             renderStats(stats);
-            renderAnnouncements(ann);
-            renderAssignments(asg);
-            renderDeadlines(dl);
-            renderQuizzes(qz);
+            renderAnnouncements(ann.slice(0, 3));
+            renderAssignments(asg.slice(0, 3));
+            renderDeadlines(dl.slice(0, 3));
+            renderQuizzes(qz.slice(0, 3));
 
             // Update last sync time
             const updated = document.getElementById('last-updated');
