@@ -790,6 +790,103 @@ window.installPwa = installPwa;
 window.dismissPwaBanner = dismissPwaBanner;
 window.closePwaBanner = closePwaBanner;
 
+// ---------- Pull-to-Refresh ----------
+const PTR_ACTIVATION_PX = 50;   // show indicator after pulling this far
+const PTR_THRESHOLD      = 70;  // trigger reload after pulling this far
+const PTR_DEBOUNCE       = 800; // ms to ignore successive triggers
+
+let ptrTouchStartY = 0;
+let ptrTouchMoved = false;
+let ptrLastTriggerTime = 0;
+let ptrBypass = false; // true while refresh is in progress to suppress touch events
+
+function initPullToRefresh() {
+  document.addEventListener('touchstart', onPtrTouchStart, { passive: true });
+  document.addEventListener('touchmove', onPtrTouchMove, { passive: true });
+  document.addEventListener('touchend', onPtrTouchEnd, { passive: true });
+}
+
+function onPtrTouchStart(e) {
+  if (ptrBypass) return;
+  // Only activate when the page is near the top
+  if (window.scrollY > 5) {
+    ptrTouchStartY = 0;
+    ptrTouchMoved = false;
+    return;
+  }
+  ptrTouchStartY = e.touches[0].clientY;
+  ptrTouchMoved = false;
+}
+
+function onPtrTouchMove(e) {
+  if (ptrBypass || ptrTouchStartY === 0) return;
+  const deltaY = e.touches[0].clientY - ptrTouchStartY;
+  if (deltaY <= 0) {
+    // Pulling up, not down — ignore
+    hidePtrIndicator();
+    ptrTouchMoved = false;
+    return;
+  }
+  ptrTouchMoved = true;
+  const ptr = document.getElementById('pull-to-refresh');
+  if (!ptr) return;
+
+  // Only show the indicator once 30px of pull is reached
+  if (deltaY >= PTR_ACTIVATION_PX) {
+    ptr.classList.add('is-visible');
+    // Add "release to refresh" label once threshold is reached
+    if (deltaY >= PTR_THRESHOLD) {
+      ptr.classList.add('is-active-threshold');
+    } else {
+      ptr.classList.remove('is-active-threshold');
+    }
+    // Move the indicator down (capped at 60px)
+    const indicator = ptr.querySelector('.ptr-indicator');
+    if (indicator) {
+      const travel = Math.min(deltaY - PTR_ACTIVATION_PX, 60);
+      indicator.style.transform = `translateY(${travel}px)`;
+    }
+  } else {
+    hidePtrIndicator();
+  }
+}
+
+function onPtrTouchEnd(e) {
+  if (ptrBypass || !ptrTouchMoved || ptrTouchStartY === 0) {
+    hidePtrIndicator();
+    return;
+  }
+  const deltaY = e.changedTouches[0].clientY - ptrTouchStartY;
+  hidePtrIndicator();
+  if (deltaY >= PTR_THRESHOLD && Date.now() - ptrLastTriggerTime > PTR_DEBOUNCE) {
+    ptrLastTriggerTime = Date.now();
+    // Full page reload on pull-to-refresh
+    ptrBypass = true;
+    const ptr = document.getElementById('pull-to-refresh');
+    if (ptr) ptr.classList.add('is-visible', 'is-refreshing');
+    location.reload();
+  }
+  ptrTouchStartY = 0;
+  ptrTouchMoved = false;
+}
+
+function hidePtrIndicator() {
+  const ptr = document.getElementById('pull-to-refresh');
+  if (!ptr) return;
+  ptr.classList.remove('is-visible', 'is-refreshing', 'is-active-threshold');
+  const indicator = ptr.querySelector('.ptr-indicator');
+  if (indicator) indicator.style.transform = '';
+}
+
+// Initialize on DOM ready
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initPullToRefresh);
+} else {
+  initPullToRefresh();
+}
+
+// ---------- Pull-to-Refresh ----------
+
 window.DashboardUtils = {
     TIME_ZONE_LABEL,
     setActiveTimeZone,

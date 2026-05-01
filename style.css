@@ -331,6 +331,82 @@ svg {
   overflow-x: hidden;
 }
 
+/* ---------- Pull-to-Refresh ---------- */
+.pull-to-refresh {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 9999;
+  display: flex;
+  justify-content: center;
+  /* Position just below the header — peeks in from above the viewport */
+  padding-top: calc(var(--header-height) + env(safe-area-inset-top, 0px));
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 250ms ease;
+}
+
+.pull-to-refresh.is-visible {
+  opacity: 1;
+}
+
+.ptr-indicator {
+  width: auto;
+  min-width: 28px;
+  height: 28px;
+  border-radius: var(--radius-full);
+  background: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(139, 92, 246, 0.4);
+  transform: translateY(-150%); /* hidden above the viewport */
+  transition: transform 200ms ease;
+  white-space: nowrap;
+  padding: 0 var(--space-3);
+  gap: var(--space-2);
+}
+
+.pull-to-refresh.is-visible .ptr-indicator {
+  /* Slides down into view once 30px pull is reached */
+  transform: translateY(0);
+}
+
+.ptr-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: white;
+  letter-spacing: 0.02em;
+  display: none;
+}
+
+.pull-to-refresh.is-active-threshold .ptr-label {
+  display: block;
+}
+
+.ptr-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  border-top-color: white;
+  border-radius: 50%;
+  display: none;
+}
+
+.pull-to-refresh.is-refreshing .ptr-spinner {
+  display: block;
+  animation: ptr-spin 0.9s linear infinite;
+}
+
+.pull-to-refresh.is-refreshing .ptr-label {
+  display: none;
+}
+
+@keyframes ptr-spin {
+  to { transform: rotate(360deg); }
+}
+
 /* ---------- Dashboard Footer ---------- */
 .dashboard-footer {
   background: var(--bg-elevated);
