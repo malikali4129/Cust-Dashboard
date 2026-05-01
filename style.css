@@ -2202,6 +2202,59 @@ body.admin-body.login-mode > .cyber-grid .glitch-2 { top: 70%; right: 10%; anima
 #login-screen .cyber-link:hover::after { width: 100%; }
 #login-screen .cyber-link:hover { color: #ff4da6; text-shadow: 0 0 5px rgba(255, 0, 128, 0.5); }
 
+/* Back-link below the form — centered and spaced for PWA/compact layouts */
+#login-screen .cyber-link.back-link {
+  display: block;
+  text-align: center;
+  margin-top: 14px;
+  font-size: 13px;
+  letter-spacing: 1.2px;
+}
+
+#login-screen .cyber-link.back-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 10px 18px;
+  border: 1px solid rgba(255,13,128,0.12);
+  border-radius: 6px;
+  width: min(220px, 90%);
+  margin-left: auto;
+  margin-right: auto;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, color 0.18s ease;
+  box-shadow: 0 0 8px rgba(255,13,128,0.03) inset;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+#login-screen .cyber-link.back-link .back-icon svg {
+  display: block;
+  color: #ff4da6;
+  filter: drop-shadow(0 0 6px rgba(255,77,166,0.18));
+}
+
+#login-screen .cyber-link.back-link:hover {
+  transform: translateY(-3px);
+  color: #ff4da6;
+  box-shadow: 0 6px 22px rgba(255,77,166,0.12), 0 0 18px rgba(0,255,65,0.02);
+}
+
+@keyframes back-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(255,77,166,0.06); }
+  70% { box-shadow: 0 0 18px 6px rgba(255,77,166,0.02); }
+  100% { box-shadow: 0 0 0 0 rgba(255,77,166,0); }
+}
+
+#login-screen .cyber-link.back-link .back-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  animation: back-pulse 3.6s infinite ease-in-out 0.4s;
+}
+
 #login-screen .neon-button {
   width: 100%;
   background: transparent;
