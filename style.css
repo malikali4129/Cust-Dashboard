@@ -664,8 +664,8 @@ svg {
   margin-bottom: var(--space-6);
 }
 
-/* PWA-only: reduce top padding with negative margin */
-@media (display-mode: standalone) {
+/* PWA-only on mobile: reduce top padding with negative margin */
+@media (display-mode: standalone) and (max-width: 500px) {
   .count-bar {
     margin-top: -35px;
   }
