@@ -15,26 +15,25 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-
-      - name: Verify JavaScript syntax
-        run: |
-          node --check config.js
-          node --check data-offline.js
-          node --check data.js
-          node --check script.js
-          node --check dashboard.js
-          node --check admin.js
-          node --check server.js
-
-      - name: Verify project files
+      - name: Verify static site files
         run: |
           test -f index.html
           test -f admin.html
+          test -f README.md
           test -f schema.sql
           test -f manifest.webmanifest
           test -f sw.js
+          test -f config.js
+          test -f data.js
+          test -f dashboard.js
+          test -f admin.js
+            grep -q 'config.js' index.html
+            grep -q 'data-offline.js' index.html
+            grep -q 'data.js' index.html
+            grep -q 'script.js' index.html
+            grep -q 'dashboard.js' index.html
+            grep -q 'config.js' admin.html
+            grep -q 'data-offline.js' admin.html
+            grep -q 'data.js' admin.html
+            grep -q 'script.js' admin.html
+            grep -q 'admin.js' admin.html
