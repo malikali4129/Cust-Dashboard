@@ -10,7 +10,8 @@ const adminState = {
     search: '',
     total: 0,
     items: [],
-    timeZone: DashboardUtils.TIME_ZONE_LABEL
+    timeZone: DashboardUtils.TIME_ZONE_LABEL,
+    saving: false   // true while a save/login request is in flight — prevents double-submit
 };
 
 let feedbackViewingId = null;
@@ -397,6 +398,30 @@ function showDashboard() {
     renderCurrentTab();
 }
 
+// Prevent double-submit: disables/enables submit buttons and shows spinner text
+function setButtonsLoading(isLoading) {
+    adminState.saving = isLoading;
+    // Login form
+    const loginBtn = document.querySelector('#login-form button[type="submit"]');
+    if (loginBtn) {
+        loginBtn.disabled = isLoading;
+        loginBtn.textContent = isLoading ? 'Signing in...' : 'Sign in';
+    }
+    // Save button
+    const saveBtn = document.querySelector('.modal-footer .btn-primary') ||
+                    document.querySelector('[onclick="saveItem()"]');
+    if (saveBtn) {
+        saveBtn.disabled = isLoading;
+        saveBtn.textContent = isLoading ? 'Saving...' : 'Save';
+    }
+    // Delete confirm button
+    const deleteBtn = document.querySelector('[onclick="confirmDeleteNow()"]');
+    if (deleteBtn) {
+        deleteBtn.disabled = isLoading;
+        deleteBtn.textContent = isLoading ? 'Deleting...' : 'Delete';
+    }
+}
+
 // Check auth status on page load
 async function checkAuth() {
     const perms = await DashboardData.checkUserPermissions();
@@ -409,9 +434,12 @@ async function checkAuth() {
 
 async function handleLogin(event) {
     event.preventDefault();
+    if (adminState.saving) return;
+
     const email = document.getElementById('login-email').value.trim();
     const password = document.getElementById('login-password').value;
 
+    setButtonsLoading(true);
     try {
         await DashboardData.signInAdmin(email, password);
         await DashboardData.logAction('admin_login', { email: email });
@@ -419,6 +447,8 @@ async function handleLogin(event) {
         showDashboard();
     } catch (error) {
         DashboardUtils.showToast(error.message || 'Login failed.', 'error');
+    } finally {
+        setButtonsLoading(false);
     }
 }
 
@@ -1399,9 +1429,14 @@ async function editItem(id) {
 }
 
 async function saveItem() {
+    // Guard: prevent double-submit
+    if (adminState.saving) return;
+    setButtonsLoading(true);
+
     // Check permissions first
     const perms = await DashboardData.checkActionPermission();
     if (!perms.allowed) {
+        setButtonsLoading(false);
         handlePermissionDenied(perms);
         return;
     }
@@ -1520,13 +1555,20 @@ async function saveItem() {
         renderCurrentTab();
     } catch (error) {
         DashboardUtils.showToast(error.message || 'Could not save the record.', 'error');
+    } finally {
+        setButtonsLoading(false);
     }
 }
 
 async function deleteItem(id) {
+    // Guard: prevent double-delete (double-submit on confirm button)
+    if (adminState.saving) return;
+    setButtonsLoading(true);
+
     // Check permissions first
     const perms = await DashboardData.checkActionPermission();
     if (!perms.allowed) {
+        setButtonsLoading(false);
         handlePermissionDenied(perms);
         return;
     }
@@ -1554,6 +1596,8 @@ async function deleteItem(id) {
             renderRecords(document.getElementById('tab-content'));
         }
         DashboardUtils.showToast(error.message || 'Delete failed.', 'error');
+    } finally {
+        setButtonsLoading(false);
     }
 }
 
