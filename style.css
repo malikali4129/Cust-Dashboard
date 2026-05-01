@@ -666,8 +666,20 @@ svg {
 
 /* PWA-only on mobile: reduce top padding with negative margin */
 @media (display-mode: standalone) and (max-width: 500px) {
-  .count-bar {
-    margin-top: -35px;
+  /* iOS: safe-area-inset-top is honoured (typically 20–47px),
+     so the -35px closes the extra safe-area gap correctly. */
+  @supports (padding-top: env(safe-area-inset-top)) {
+    .count-bar {
+      margin-top: -35px;
+    }
+  }
+
+  /* Android: safe-area-inset-top is 0 or ignored, header is 64px only,
+     so -35px would pull the bar into the header. Use -20px. */
+  @supports not (padding-top: env(safe-area-inset-top)) {
+    .count-bar {
+      margin-top: -20px;
+    }
   }
 }
 
