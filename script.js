@@ -791,8 +791,8 @@ window.dismissPwaBanner = dismissPwaBanner;
 window.closePwaBanner = closePwaBanner;
 
 // ---------- Pull-to-Refresh ----------
-const PTR_ACTIVATION_PX = 50;   // show indicator after pulling this far
-const PTR_THRESHOLD      = 70;  // trigger reload after pulling this far
+const PTR_ACTIVATION_PX = 250;   // show indicator after pulling this far
+const PTR_THRESHOLD      = 350;  // trigger reload after pulling this far
 const PTR_DEBOUNCE       = 800; // ms to ignore successive triggers
 
 let ptrTouchStartY = 0;
