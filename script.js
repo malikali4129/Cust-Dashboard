@@ -662,6 +662,13 @@ document.addEventListener('DOMContentLoaded', () => {
     initModals();
     initConnectivity();
     registerServiceWorker();
+
+    // Detect iOS PWA and add pwa-ios class to <html> for CSS targeting
+    const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+    const isPWA = window.matchMedia('(display-mode: standalone)').matches;
+    if (isIOS && isPWA) {
+        document.documentElement.classList.add('pwa-ios');
+    }
     initPwaInstall();
     // For the client-facing dashboard (index.html) remove the persistent sidebar
     // Admin panel (`admin.html`) keeps the sidebar.
