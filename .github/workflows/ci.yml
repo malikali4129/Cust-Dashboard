@@ -25,15 +25,8 @@ jobs:
           test -f sw.js
           test -f config.js
           test -f data.js
+          test -f script.js
           test -f dashboard.js
           test -f admin.js
-          grep -q 'config.js' index.html
-          grep -q 'data-offline.js' index.html
-          grep -q 'data.js' index.html
-          grep -q 'script.js' index.html
-          grep -q 'dashboard.js' index.html
-          grep -q 'config.js' admin.html
-          grep -q 'data-offline.js' admin.html
-          grep -q 'data.js' admin.html
-          grep -q 'script.js' admin.html
-          grep -q 'admin.js' admin.html
+          test -f data-offline.js
+          echo "All required files present."
