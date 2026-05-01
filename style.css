@@ -678,7 +678,7 @@ svg {
      so -35px would pull the bar into the header. Use -20px. */
   @supports not (padding-top: env(safe-area-inset-top)) {
     .count-bar {
-      margin-top: -20px;
+      margin-top: 30px;
     }
   }
 }
