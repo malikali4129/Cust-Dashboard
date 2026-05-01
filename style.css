@@ -472,7 +472,7 @@ svg {
 }
 
 .admin-main {
-  padding-top: calc(var(--header-height) + env(safe-area-inset-top, 0px) + var(--space-4) + 56px + var(--space-6)) !important;
+  padding-top: calc(var(--header-height) + var(--space-4)) !important;
 }
 
 /* ---------- Dashboard Header ---------- */
@@ -666,7 +666,7 @@ svg {
 
 /* iOS PWA: compensate for safe-area-inset-top causing extra top gap */
 html.pwa-ios .count-bar {
-  margin-top: -110px;
+  margin-top: -35px;
 }
 
 .count-card {
@@ -1459,11 +1459,6 @@ body.client-dashboard .dashboard-header {
   background: var(--bg-surface);
   border-radius: var(--radius-lg);
   border: 1px solid var(--border);
-  position: fixed;
-  top: calc(var(--header-height) + env(safe-area-inset-top, 0px) + var(--space-4));
-  left: var(--space-4);
-  right: var(--space-4);
-  z-index: 9998;
 }
 
 
@@ -2524,10 +2519,7 @@ body.admin-body.login-mode > .cyber-grid .glitch-2 { top: 70%; right: 10%; anima
   margin-top: var(--space-4);
   border-top: 1px solid var(--border);
 }
-/* iOS PWA: compensate for safe-area-inset-top causing extra top gap */
-html.pwa-ios .panel {
-  margin-top: -50px;
-}
+
 /* ---------- Panel Header ---------- */
 .panel-header {
   display: flex;
@@ -3468,7 +3460,7 @@ html.pwa-ios .panel {
     padding-right: var(--space-4) !important;
     padding-bottom: var(--space-10) !important;
     /* Safe area for notched phones - starts from very top */
-    padding-top: calc(var(--header-height) + env(safe-area-inset-top, 20px) + var(--space-4) + 56px + var(--space-6)) !important;
+    padding-top: calc(var(--header-height) + env(safe-area-inset-top, 20px) + var(--space-4)) !important;
   }
 
   /* Hero panel — stacks vertically */
@@ -3501,11 +3493,6 @@ html.pwa-ios .panel {
     scrollbar-width: none;
     -ms-overflow-style: none;
     padding-bottom: var(--space-2);
-    position: fixed;
-    top: calc(var(--header-height) + env(safe-area-inset-top, 0px) + var(--space-4));
-    left: var(--space-4);
-    right: var(--space-4);
-    z-index: 9998;
   }
   .tabs::-webkit-scrollbar { display: none; }
   .tab { flex-shrink: 0; }
