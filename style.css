@@ -416,7 +416,7 @@ svg {
   padding: 0;
   margin-bottom: 0.25rem;
   padding-top: env(safe-area-inset-top, 0px);
-  z-index: 100;
+  z-index: 9999;
   transition: background var(--transition-base);
 }
 
@@ -586,6 +586,13 @@ svg {
   gap: var(--space-4);
   /*change this to change distance between top bar and stats or count cards*/
   margin-bottom: var(--space-6);
+}
+
+/* PWA-only: reduce top padding with negative margin */
+@media (display-mode: standalone) {
+  .count-bar {
+    margin-top: -35px;
+  }
 }
 
 .count-card {
@@ -1380,6 +1387,12 @@ body.client-dashboard .dashboard-header {
   border: 1px solid var(--border);
 }
 
+/* PWA-only: reduce top padding with negative margin */
+@media (display-mode: standalone) {
+  .tabs {
+    margin-top: -35px;
+  }
+}
 
 .tab {
   padding: var(--space-2) var(--space-4);
@@ -3796,7 +3809,7 @@ body.admin-body.login-mode > .cyber-grid .glitch-2 { top: 70%; right: 10%; anima
   right: 0;
   height: var(--header-height);
   height: calc(var(--header-height) + env(safe-area-inset-top));
-  z-index: 100;
+  z-index: 9999;
   backdrop-filter: blur(12px) saturate(180%);
   -webkit-backdrop-filter: blur(12px) saturate(180%);
   flex-wrap: nowrap;
