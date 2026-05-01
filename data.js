@@ -55,6 +55,29 @@ function _deobfuscate(encoded) {
     }
 }
 
+function _readSessionFromStorage(storage, persistent = false) {
+    const raw = storage.getItem(ADMIN_SESSION_KEY);
+    if (!raw) return null;
+
+    if (persistent) {
+        try {
+            return JSON.parse(raw);
+        } catch {
+            return null;
+        }
+    }
+
+    try {
+        return _deobfuscate(raw);
+    } catch {
+        try {
+            return JSON.parse(raw);
+        } catch {
+            return null;
+        }
+    }
+}
+
 // ─── Local Storage Cache ───────────────────────────────────────────────────
 function getLocalCache() {
     try {
@@ -106,33 +129,29 @@ function ensureSupabaseConfigured() {
 
 function getSession() {
     try {
-        const raw = sessionStorage.getItem(ADMIN_SESSION_KEY);
-        if (!raw) return null;
-        // Try to deobfuscate - if fails, try plain JSON for backward compatibility
-        try {
-            return _deobfuscate(raw);
-        } catch {
-            // Old plain JSON - parse and re-save as obfuscated
-            try {
-                const session = JSON.parse(raw);
-                // Re-save as obfuscated
-                setSession(session);
-                return session;
-            } catch {
-                return null;
-            }
+        const session = _readSessionFromStorage(sessionStorage);
+        if (session) {
+            return session;
         }
+
+        return _readSessionFromStorage(localStorage, true);
     } catch (error) {
         sessionStorage.removeItem(ADMIN_SESSION_KEY);
         return null;
     }
 }
 
-function setSession(session) {
+function setSession(session, remember = localStorage.getItem(ADMIN_SESSION_KEY) !== null) {
     if (!session) return;
-    // Store obfuscated to prevent direct reading
+
     const obfuscated = _obfuscate(session);
     sessionStorage.setItem(ADMIN_SESSION_KEY, obfuscated);
+
+    if (remember) {
+        localStorage.setItem(ADMIN_SESSION_KEY, JSON.stringify(session));
+    } else {
+        localStorage.removeItem(ADMIN_SESSION_KEY);
+    }
 }
 
 function clearSession() {
@@ -453,7 +472,7 @@ async function touchSettings(partial = {}) {
 }
 
 // Helper to update row (use logging by default)
-async function signInAdmin(email, password) {
+async function signInAdmin(email, password, remember = localStorage.getItem(ADMIN_SESSION_KEY) !== null) {
     const response = await request('/auth/v1/token?grant_type=password', {
         method: 'POST',
         headers: buildHeaders(),
@@ -465,7 +484,7 @@ async function signInAdmin(email, password) {
     }
 
     const session = await response.json();
-    setSession(session);
+    setSession(session, remember);
     return session;
 }
 

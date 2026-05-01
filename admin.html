@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="description" content="Admin panel for University Dashboard — manage announcements, assignments, deadlines, quizzes, and feedback.">
-    <meta name="theme-color" content="#0b0f19">
+    <meta name="theme-color" content="#04110b">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="UniDash Admin">
@@ -14,7 +14,7 @@
     <title>Admin Panel - University Dashboard</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Orbitron:wght@500;600;700;800&family=Share+Tech+Mono&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
 <body class="admin-body">
@@ -25,28 +25,103 @@
         </div>
     </noscript>
 
+    <div class="cyber-grid" aria-hidden="true">
+        <div class="grid-line grid-h-1"></div>
+        <div class="grid-line grid-v-1"></div>
+        <div class="grid-line grid-h-2"></div>
+        <div class="grid-line grid-v-2"></div>
+        <div class="grid-line grid-h-3"></div>
+        <div class="cyber-glitch glitch-1"></div>
+        <div class="cyber-glitch glitch-2"></div>
+    </div>
+
     <section id="login-screen" class="login-shell">
-        <div class="login-card">
-            <p class="eyebrow">Secure Access</p>
-            <h1>Admin access</h1>
-            <p class="login-copy">Sign in to manage the board.</p>
-            <form class="editor-form" onsubmit="handleLogin(event)">
-                <label class="field">
-                    <span>Email</span>
-                    <input class="form-input" id="login-email" type="email" autocomplete="username" required>
-                </label>
-                <label class="field">
-                    <span>Password</span>
-                    <input class="form-input" id="login-password" type="password" autocomplete="current-password" required>
-                </label>
-                <button class="btn btn-primary" type="submit">Sign in</button>
-            </form>
-            <div class="login-footer">
-                <div class="status-pill compact">
-                    <strong data-connection-state>Online</strong>
-                    <span data-connection-hint>Synced</span>
+        <div class="login-container">
+            <div class="cyber-terminal">
+                <div class="terminal-header">
+                    <div class="terminal-buttons">
+                        <div class="term-btn btn-red"></div>
+                        <div class="term-btn btn-yellow"></div>
+                        <div class="term-btn btn-green"></div>
+                    </div>
+                    <div class="terminal-title">MyCustDashboard.EXE</div>
                 </div>
-                <a href="index.html">Back to dashboard</a>
+
+                <div class="cyber-content">
+                    <div class="neon-header">
+                        <div class="cyber-logo">
+                            <div class="logo-frame">
+                                <div class="logo-core">
+                                    <svg width="40" height="40" viewBox="0 0 40 40" fill="none" aria-hidden="true">
+                                        <path d="M20 4L36 12v16L20 36L4 28V12L20 4z" stroke="currentColor" stroke-width="2" fill="none"></path>
+                                        <circle cx="20" cy="20" r="6" stroke="currentColor" stroke-width="1.5"></circle>
+                                        <path d="M14 14l12 12M26 14l-12 12" stroke="currentColor" stroke-width="1"></path>
+                                    </svg>
+                                </div>
+                                <div class="logo-scanner"></div>
+                            </div>
+                            <div class="neon-glow"></div>
+                        </div>
+                        <h1 class="cyber-title">
+                            <span class="title-glitch" data-text="Admin access">Admin access</span>
+                        </h1>
+                        <p class="access-text">[ SECURE_TERMINAL_ACCESS ]</p>
+                    </div>
+
+                    <form class="neon-form" onsubmit="handleLogin(event)" novalidate>
+                        <div class="cyber-field">
+                            <div class="field-frame">
+                                <div class="field-border"></div>
+                                <input type="email" id="login-email" name="email" required autocomplete="username" inputmode="email" autocapitalize="none" spellcheck="false" placeholder=" ">
+                                <label for="login-email">&gt; EMAIL_ADDRESS</label>
+                                <div class="cyber-scanner">
+                                    <div class="scan-line"></div>
+                                </div>
+                            </div>
+                            <span class="cyber-error" id="login-email-error"></span>
+                        </div>
+
+                        <div class="cyber-field">
+                            <div class="field-frame">
+                                <div class="field-border"></div>
+                                <input type="password" id="login-password" name="password" required autocomplete="current-password" placeholder=" ">
+                                <label for="login-password">&gt; ACCESS_CODE</label>
+                                <div class="cyber-scanner">
+                                    <div class="scan-line"></div>
+                                </div>
+                            </div>
+                            <span class="cyber-error" id="login-password-error"></span>
+                        </div>
+
+                        <div class="cyber-options">
+                            <label class="neon-checkbox" for="remember-login">
+                                <input type="checkbox" id="remember-login" name="remember">
+                                <span class="checkbox-matrix">
+                                    <div class="matrix-frame"></div>
+                                    <svg width="10" height="8" viewBox="0 0 10 8" fill="none" aria-hidden="true">
+                                        <path d="M1 4l2.5 2.5L9 1" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+                                    </svg>
+                                </span>
+                                <span class="checkbox-text">MAINTAIN_SESSION</span>
+                            </label>
+                            <a href="index.html" class="cyber-link">Back to dashboard</a>
+                        </div>
+
+                        <button type="submit" class="neon-button">
+                            <div class="btn-matrix"></div>
+                            <span class="btn-text">[ INITIALIZE_CONNECTION ]</span>
+                            <div class="btn-loader">
+                                <div class="matrix-loader">
+                                    <div class="matrix-bar"></div>
+                                    <div class="matrix-bar"></div>
+                                    <div class="matrix-bar"></div>
+                                    <div class="matrix-bar"></div>
+                                </div>
+                            </div>
+                            <div class="btn-glow"></div>
+                        </button>
+                    </form>
+                </div>
             </div>
         </div>
     </section>

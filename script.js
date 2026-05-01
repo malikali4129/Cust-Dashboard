@@ -691,6 +691,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // ---------- PWA Install Banner ----------
 let PWA_DEFERRED_PROMPT = null;
+const PWA_BANNER_SNOOZE_KEY = 'dashboard_pwa_banner_snooze_until';
+const PWA_BANNER_SNOOZE_MS = 60 * 60 * 1000; // 1 hour
+
+function isPwaBannerSnoozed() {
+    try {
+        const snoozeUntil = Number(localStorage.getItem(PWA_BANNER_SNOOZE_KEY) || '0');
+        return snoozeUntil > Date.now();
+    } catch {
+        return false;
+    }
+}
+
+function snoozePwaBannerForOneHour() {
+    try {
+        localStorage.setItem(PWA_BANNER_SNOOZE_KEY, String(Date.now() + PWA_BANNER_SNOOZE_MS));
+    } catch {
+        // Ignore storage failures in restricted environments.
+    }
+}
 
 async function initPwaInstall() {
     // Already installed — don't show banner
@@ -702,12 +721,16 @@ async function initPwaInstall() {
     window.addEventListener('beforeinstallprompt', (e) => {
         e.preventDefault();
         PWA_DEFERRED_PROMPT = e;
-        showPwaBanner();
+        if (!isPwaBannerSnoozed()) {
+            showPwaBanner();
+        }
     });
 
     // Show banner immediately for all browsers
     // iOS users will see instructions when they tap "Install"
-    showPwaBanner();
+    if (!isPwaBannerSnoozed()) {
+        showPwaBanner();
+    }
 
     // When app is installed, hide the banner permanently
     window.addEventListener('appinstalled', () => {
@@ -753,7 +776,8 @@ async function installPwa() {
 }
 
 function dismissPwaBanner() {
-    // Just hide for this session — banner will reappear on next visit
+    // Hide and snooze for 1 hour across refreshes
+    snoozePwaBannerForOneHour();
     hidePwaBanner();
 }
 

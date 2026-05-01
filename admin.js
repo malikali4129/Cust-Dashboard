@@ -20,6 +20,9 @@ let feedbackViewingId = null;
 const SESSION_INACTIVITY_TIMEOUT = 5 * 60 * 1000; // 5 minutes in ms
 let sessionActivityTimer = null;
 
+const LOGIN_REMEMBER_KEY = 'dashboard_admin_login_remember';
+const LOGIN_EMAIL_KEY = 'dashboard_admin_login_email';
+
 function resetSessionActivityTimer() {
     // Clear existing timer
     if (sessionActivityTimer) {
@@ -47,6 +50,41 @@ function setupSessionActivityListeners() {
     activityEvents.forEach(event => {
         document.addEventListener(event, resetSessionActivityTimer, { passive: true });
     });
+}
+
+function loadLoginPreferences() {
+    const emailInput = document.getElementById('login-email');
+    const rememberInput = document.getElementById('remember-login');
+
+    if (!emailInput || !rememberInput) {
+        return;
+    }
+
+    try {
+        const remember = localStorage.getItem(LOGIN_REMEMBER_KEY) === '1';
+        const savedEmail = localStorage.getItem(LOGIN_EMAIL_KEY) || '';
+
+        rememberInput.checked = remember;
+        if (remember && savedEmail) {
+            emailInput.value = savedEmail;
+        }
+    } catch {
+        // Ignore storage failures in restricted browser contexts.
+    }
+}
+
+function saveLoginPreferences(email, remember) {
+    try {
+        if (remember) {
+            localStorage.setItem(LOGIN_REMEMBER_KEY, '1');
+            localStorage.setItem(LOGIN_EMAIL_KEY, email);
+        } else {
+            localStorage.removeItem(LOGIN_REMEMBER_KEY);
+            localStorage.removeItem(LOGIN_EMAIL_KEY);
+        }
+    } catch {
+        // Ignore storage failures in restricted browser contexts.
+    }
 }
 
 // Helper: show login modal instead of toast for permission errors
@@ -393,6 +431,7 @@ function currentConfig() {
 }
 
 function showDashboard() {
+    document.body.classList.remove('login-mode');
     document.getElementById('login-screen')?.classList.add('hidden');
     document.getElementById('admin-dashboard')?.classList.remove('hidden');
     renderCurrentTab();
@@ -402,10 +441,14 @@ function showDashboard() {
 function setButtonsLoading(isLoading) {
     adminState.saving = isLoading;
     // Login form
-    const loginBtn = document.querySelector('#login-form button[type="submit"]');
+    const loginBtn = document.querySelector('#login-screen .neon-button');
     if (loginBtn) {
         loginBtn.disabled = isLoading;
-        loginBtn.textContent = isLoading ? 'Signing in...' : 'Sign in';
+        loginBtn.classList.toggle('loading', isLoading);
+        const loginText = loginBtn.querySelector('.btn-text');
+        if (loginText) {
+            loginText.textContent = isLoading ? '[ INITIALIZING_CONNECTION ]' : '[ INITIALIZE_CONNECTION ]';
+        }
     }
     // Save button
     const saveBtn = document.querySelector('.modal-footer .btn-primary') ||
@@ -436,12 +479,20 @@ async function handleLogin(event) {
     event.preventDefault();
     if (adminState.saving) return;
 
+    const form = event.currentTarget;
+    if (form && typeof form.checkValidity === 'function' && !form.checkValidity()) {
+        form.reportValidity();
+        return;
+    }
+
     const email = document.getElementById('login-email').value.trim();
     const password = document.getElementById('login-password').value;
+    const remember = document.getElementById('remember-login')?.checked ?? false;
 
     setButtonsLoading(true);
     try {
-        await DashboardData.signInAdmin(email, password);
+        await DashboardData.signInAdmin(email, password, remember);
+        saveLoginPreferences(email, remember);
         await DashboardData.logAction('admin_login', { email: email });
         DashboardUtils.showToast('Admin session started.', 'success');
         showDashboard();
@@ -1680,6 +1731,8 @@ window.deleteCurrentFeedback = deleteCurrentFeedback;
 window.deleteFeedbackItem = deleteFeedbackItem;
 
 document.addEventListener('DOMContentLoaded', () => {
+    document.body.classList.add('login-mode');
+    loadLoginPreferences();
     checkAuth();
     // Start session inactivity tracking
     resetSessionActivityTimer();
