@@ -532,13 +532,8 @@ function initConnectivity() {
     updateConnectivityUI();
 
     // Reflect initial offline banner/server state immediately (prefer data-layer flag)
-    const banner = document.getElementById('offline-banner');
     const initialOnline = (typeof window.DashboardOnline !== 'undefined') ? !!window.DashboardOnline : navigator.onLine;
     if (!initialOnline) {
-        if (banner) {
-            banner.innerHTML = '⚠️ Showing cached data — you are offline';
-            banner.classList.add('is-visible');
-        }
         const serverDot = document.getElementById('server-dot');
         if (serverDot) serverDot.classList.remove('live');
         const updated = document.getElementById('last-updated');
@@ -550,10 +545,6 @@ function initConnectivity() {
 
     window.addEventListener('online', async () => {
         updateConnectivityUI();
-        // Hide offline banner if present
-        const banner = document.getElementById('offline-banner');
-        if (banner) banner.classList.remove('is-visible');
-
         // Indicate syncing; wait for data-layer to mark server live
         const serverDot = document.getElementById('server-dot');
         if (serverDot) serverDot.classList.remove('live');
@@ -599,11 +590,6 @@ function initConnectivity() {
         if (serverDot) serverDot.classList.remove('live');
         const updated = document.getElementById('last-updated');
         if (updated) updated.textContent = 'Offline';
-        const banner = document.getElementById('offline-banner');
-        if (banner) {
-            banner.innerHTML = '⚠️ Showing cached data — you are offline';
-            banner.classList.add('is-visible');
-        }
         showToast('You are offline. Cloud writes are paused.', 'warning');
         // Mark that we've seen offline; this enables a single 'Connection restored' toast on reconnect
         window._hadOfflineEvent = true;
