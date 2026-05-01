@@ -283,7 +283,7 @@ async function openViewAllModal(section) {
         viewAllState.allItems = sectionData;
 
         // Brief pause so skeleton shimmer shows, then stream items in progressively
-        await new Promise(resolve => setTimeout(resolve, 200));
+        await new Promise(resolve => setTimeout(resolve, 1)); //reduuced skeleton render timing in view all seciton
         await renderViewAllBody('pending');
     } catch (error) {
         body.innerHTML = '<div class="panel-loading error">Could not load items.</div>';
@@ -356,7 +356,7 @@ async function renderViewAllBody(tab) {
         index++;
 
         if (index < filtered.length) {
-            setTimeout(insertNext, 150);
+            setTimeout(insertNext, 200);
         }
     }
 
